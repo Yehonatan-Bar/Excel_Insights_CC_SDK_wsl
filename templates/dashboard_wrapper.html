@@ -136,6 +136,101 @@
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.9em;
         }
+
+        .activity-panel {
+            display: none;
+            margin-top: 20px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-panel h4 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .activity-log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #d4d4d4;
+        }
+
+        .log-entry {
+            padding: 8px 10px;
+            border-bottom: 1px solid #2d2d2d;
+            line-height: 1.6;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry:hover {
+            background: #252525;
+        }
+
+        .log-entry.log-thinking { border-left-color: #4ec9b0; }
+        .log-entry.log-text { border-left-color: #ce9178; }
+        .log-entry.log-tool { border-left-color: #dcdcaa; }
+        .log-entry.log-result { border-left-color: #9cdcfe; }
+        .log-entry.log-error { border-left-color: #f48771; }
+
+        .log-time {
+            color: #858585;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+
+        .log-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        .log-content {
+            display: inline;
+        }
+
+        .log-thinking .log-content { color: #4ec9b0; font-style: italic; }
+        .log-tool .log-content { color: #dcdcaa; font-weight: 500; }
+        .log-result .log-content { color: #9cdcfe; }
+        .log-text .log-content { color: #ce9178; }
+        .log-error .log-content { color: #f48771; font-weight: bold; }
+
+        .expand-toggle {
+            color: #569cd6;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-left: 8px;
+            font-size: 0.9em;
+        }
+
+        .expand-toggle:hover {
+            color: #86b7e7;
+        }
+
+        .full-content {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background: #252525;
+            border-radius: 5px;
+            border-left: 3px solid #569cd6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            color: #d4d4d4;
+        }
+
+        .full-content.expanded {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -165,7 +260,67 @@
         <div class="spinner"></div>
         <div class="loading-text">Refining your analysis...</div>
         <div class="loading-subtext" id="loadingTime">Elapsed: 0s</div>
+
+        <div class="activity-panel" id="activityPanel" style="display: block; max-width: 800px; margin-top: 30px;">
+            <h4>
+                <span>🧠 Agent Thinking & Working</span>
+                <span style="font-size: 0.8em; color: #858585; margin-left: auto;">Live Stream</span>
+            </h4>
+            <div class="activity-log" id="activityLog">
+                <!-- Events will be streamed here in real-time -->
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Helper function to append log entry with expand/collapse support
+        function appendLogEntry(event) {
+            const logDiv = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${event.type}`;
+
+            // Create unique ID for this entry
+            const entryId = `entry-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            // Build entry HTML
+            let html = `
+                <span class="log-time">[${event.timestamp}]</span>
+                <span class="log-icon">${event.icon}</span>
+                <span class="log-content">${escapeHtml(event.content)}</span>
+            `;
+
+            // Add expand toggle if content is expandable
+            if (event.expandable && event.full_content) {
+                html += `<span class="expand-toggle" onclick="toggleExpand('${entryId}')">[expand]</span>`;
+                html += `<div class="full-content" id="${entryId}">${escapeHtml(event.full_content)}</div>`;
+            }
+
+            entry.innerHTML = html;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // Toggle expand/collapse for log entries
+        function toggleExpand(entryId) {
+            const fullContent = document.getElementById(entryId);
+            const toggleBtn = fullContent.previousElementSibling;
+
+            if (fullContent.classList.contains('expanded')) {
+                fullContent.classList.remove('expanded');
+                toggleBtn.textContent = '[expand]';
+            } else {
+                fullContent.classList.add('expanded');
+                toggleBtn.textContent = '[collapse]';
+            }
+        }
+    </script>
 
     <script>
         const form = document.getElementById('refinementForm');
@@ -209,10 +364,27 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Poll for completion
+                    // Clear previous activity log
+                    const activityLog = document.getElementById('activityLog');
+                    activityLog.innerHTML = '';
+                    let lastEventCount = 0;
+
+                    // Poll for completion and activity
                     const pollInterval = setInterval(async () => {
                         const statusResponse = await fetch(`/status/${result.new_run_id}`);
                         const status = await statusResponse.json();
+
+                        // Update activity log with new events
+                        if (status.events && status.events.length > 0) {
+                            const currentEventCount = status.event_count || 0;
+                            if (currentEventCount > lastEventCount) {
+                                const eventsToShow = status.events.slice(-(currentEventCount - lastEventCount));
+                                eventsToShow.forEach(event => {
+                                    appendLogEntry(event);
+                                });
+                                lastEventCount = currentEventCount;
+                            }
+                        }
 
                         if (status.ready && status.dashboard_url) {
                             clearInterval(pollInterval);

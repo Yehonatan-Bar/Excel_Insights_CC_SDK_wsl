@@ -136,7 +136,7 @@
             background: #1e1e1e;
             border-radius: 10px;
             padding: 20px;
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
         }
 
@@ -144,6 +144,9 @@
             color: #fff;
             margin-bottom: 15px;
             font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .activity-log {
@@ -153,25 +156,77 @@
         }
 
         .log-entry {
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
+            padding: 8px 10px;
+            border-bottom: 1px solid #2d2d2d;
             line-height: 1.6;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
         }
+
+        .log-entry:hover {
+            background: #252525;
+        }
+
+        /* Color-coded borders */
+        .log-entry.log-thinking { border-left-color: #4ec9b0; }
+        .log-entry.log-text { border-left-color: #ce9178; }
+        .log-entry.log-tool { border-left-color: #dcdcaa; }
+        .log-entry.log-result { border-left-color: #9cdcfe; }
+        .log-entry.log-error { border-left-color: #f48771; }
 
         .log-time {
             color: #858585;
             margin-right: 8px;
+            font-size: 0.9em;
         }
 
         .log-icon {
             margin-right: 8px;
+            font-size: 1.1em;
         }
 
-        .log-thinking { color: #4ec9b0; }  /* Cyan for thinking */
-        .log-tool { color: #dcdcaa; }      /* Yellow for tools */
-        .log-result { color: #9cdcfe; }    /* Light blue for results */
-        .log-text { color: #ce9178; }      /* Orange for text */
-        .log-error { color: #f48771; }     /* Red for errors */
+        .log-content {
+            display: inline;
+        }
+
+        /* Specific styling for each type */
+        .log-thinking .log-content { color: #4ec9b0; font-style: italic; }
+        .log-tool .log-content { color: #dcdcaa; font-weight: 500; }
+        .log-result .log-content { color: #9cdcfe; }
+        .log-text .log-content { color: #ce9178; }
+        .log-error .log-content { color: #f48771; font-weight: bold; }
+
+        /* Expandable content */
+        .expand-toggle {
+            color: #569cd6;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-left: 8px;
+            font-size: 0.9em;
+        }
+
+        .expand-toggle:hover {
+            color: #86b7e7;
+        }
+
+        .full-content {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background: #252525;
+            border-radius: 5px;
+            border-left: 3px solid #569cd6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            color: #d4d4d4;
+        }
+
+        .full-content.expanded {
+            display: block;
+        }
 
         .error {
             background: #fee;
@@ -224,9 +279,12 @@
         </div>
 
         <div class="activity-panel" id="activityPanel">
-            <h3>🤖 Agent Activity Monitor</h3>
+            <h3>
+                <span>🧠 Agent Thinking & Working</span>
+                <span style="font-size: 0.8em; color: #858585; margin-left: auto;">Live Stream</span>
+            </h3>
             <div class="activity-log" id="activityLog">
-                <!-- Events will be appended here -->
+                <!-- Events will be streamed here in real-time -->
             </div>
         </div>
 
@@ -301,18 +359,45 @@
             return div.innerHTML;
         }
 
-        // Helper function to append log entry
+        // Helper function to append log entry with expand/collapse support
         function appendLogEntry(event) {
             const logDiv = document.getElementById('activityLog');
             const entry = document.createElement('div');
             entry.className = `log-entry log-${event.type}`;
-            entry.innerHTML = `
+
+            // Create unique ID for this entry
+            const entryId = `entry-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            // Build entry HTML
+            let html = `
                 <span class="log-time">[${event.timestamp}]</span>
                 <span class="log-icon">${event.icon}</span>
                 <span class="log-content">${escapeHtml(event.content)}</span>
             `;
+
+            // Add expand toggle if content is expandable
+            if (event.expandable && event.full_content) {
+                html += `<span class="expand-toggle" onclick="toggleExpand('${entryId}')">[expand]</span>`;
+                html += `<div class="full-content" id="${entryId}">${escapeHtml(event.full_content)}</div>`;
+            }
+
+            entry.innerHTML = html;
             logDiv.appendChild(entry);
             logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // Toggle expand/collapse for log entries
+        function toggleExpand(entryId) {
+            const fullContent = document.getElementById(entryId);
+            const toggleBtn = fullContent.previousElementSibling;
+
+            if (fullContent.classList.contains('expanded')) {
+                fullContent.classList.remove('expanded');
+                toggleBtn.textContent = '[expand]';
+            } else {
+                fullContent.classList.add('expanded');
+                toggleBtn.textContent = '[collapse]';
+            }
         }
 
         // Poll for analysis status

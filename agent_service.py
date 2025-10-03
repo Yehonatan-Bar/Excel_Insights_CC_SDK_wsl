@@ -71,7 +71,7 @@ class ExcelAnalysisAgent:
         Extract displayable information from SDK event for activity log.
 
         Returns:
-            dict with timestamp, type, content, icon for UI display
+            dict with timestamp, type, content, icon, and optional full_content for expansion
         """
         from datetime import datetime
 
@@ -85,66 +85,63 @@ class ExcelAnalysisAgent:
             content_items = event.content if isinstance(event.content, list) else [event.content]
 
             for item in content_items:
-                # Thinking block
-                if hasattr(item, 'type') and item.type == 'thinking':
+                item_class_name = type(item).__name__
+
+                # THINKING BLOCK - Check by class name
+                if item_class_name == 'ThinkingBlock' or (hasattr(item, 'type') and item.type == 'thinking'):
                     thinking_text = getattr(item, 'thinking', '') or getattr(item, 'text', '')
                     if thinking_text:
-                        # Truncate long thinking blocks
-                        preview = thinking_text[:200] + '...' if len(thinking_text) > 200 else thinking_text
+                        preview = thinking_text[:300] + '...' if len(thinking_text) > 300 else thinking_text
                         return {
                             'timestamp': timestamp,
                             'type': 'thinking',
                             'content': preview,
-                            'icon': '💭'
+                            'full_content': thinking_text,
+                            'icon': '🧠',
+                            'expandable': len(thinking_text) > 300
                         }
 
-                # Tool use (ToolUseBlock)
-                elif hasattr(item, 'type') and item.type == 'tool_use':
+                # TEXT BLOCK - Agent talking (check by class name first, then by attribute)
+                elif item_class_name == 'TextBlock':
+                    text_content = getattr(item, 'text', '')
+                    if text_content and text_content.strip():
+                        preview = text_content[:300] + '...' if len(text_content) > 300 else text_content
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'text',
+                            'content': preview,
+                            'full_content': text_content,
+                            'icon': '💬',
+                            'expandable': len(text_content) > 300
+                        }
+
+                # TOOL USE BLOCK - Check by class name
+                elif item_class_name == 'ToolUseBlock':
                     tool_name = getattr(item, 'name', 'unknown_tool')
                     tool_input = getattr(item, 'input', {})
+
                     # Format tool call nicely based on tool type
-                    if tool_name == 'Edit':
+                    if tool_name == 'Bash':
+                        command = tool_input.get('command', '?')
+                        preview = command[:150] + '...' if len(command) > 150 else command
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"Running: {preview}",
+                            'full_content': f"Running bash command:\n{command}",
+                            'icon': '⚙️',
+                            'expandable': len(command) > 150
+                        }
+                    elif tool_name == 'Edit':
                         file_path = tool_input.get('file_path', '?')
-                        content_preview = f"Editing {file_path}"
-                    elif tool_name == 'Bash':
-                        command = tool_input.get('command', '?')[:100]
-                        content_preview = f"Running: {command}"
-                    elif tool_name == 'Write':
-                        file_path = tool_input.get('file_path', '?')
-                        content_preview = f"Writing {file_path}"
-                    elif tool_name == 'Read':
-                        file_path = tool_input.get('file_path', '?')
-                        content_preview = f"Reading {file_path}"
-                    else:
-                        input_str = json.dumps(tool_input, indent=2)[:100]
-                        content_preview = f"{tool_name}({input_str}...)"
-
-                    return {
-                        'timestamp': timestamp,
-                        'type': 'tool',
-                        'content': content_preview,
-                        'icon': '🔧'
-                    }
-
-                # Also check for ToolUseBlock class directly
-                elif type(item).__name__ == 'ToolUseBlock':
-                    tool_name = getattr(item, 'name', 'unknown_tool')
-                    tool_input = getattr(item, 'input', {})
-                    if tool_name == 'Edit':
-                        file_path = tool_input.get('file_path', '?')
+                        old_string = tool_input.get('old_string', '')[:100]
                         return {
                             'timestamp': timestamp,
                             'type': 'tool',
                             'content': f"Editing {file_path}",
-                            'icon': '✏️'
-                        }
-                    elif tool_name == 'Bash':
-                        command = tool_input.get('command', '?')[:100]
-                        return {
-                            'timestamp': timestamp,
-                            'type': 'tool',
-                            'content': f"Running: {command}",
-                            'icon': '⚙️'
+                            'full_content': f"Editing file: {file_path}\nReplacing: {old_string}...",
+                            'icon': '✏️',
+                            'expandable': False
                         }
                     elif tool_name == 'Write':
                         file_path = tool_input.get('file_path', '?')
@@ -152,56 +149,81 @@ class ExcelAnalysisAgent:
                             'timestamp': timestamp,
                             'type': 'tool',
                             'content': f"Writing {file_path}",
-                            'icon': '📝'
+                            'full_content': f"Writing file: {file_path}",
+                            'icon': '📝',
+                            'expandable': False
+                        }
+                    elif tool_name == 'Read':
+                        file_path = tool_input.get('file_path', '?')
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"Reading {file_path}",
+                            'full_content': f"Reading file: {file_path}",
+                            'icon': '📖',
+                            'expandable': False
                         }
                     else:
+                        input_str = json.dumps(tool_input, indent=2)
+                        preview = input_str[:150] + '...' if len(input_str) > 150 else input_str
                         return {
                             'timestamp': timestamp,
                             'type': 'tool',
                             'content': f"{tool_name}(...)",
-                            'icon': '🔧'
+                            'full_content': f"{tool_name}:\n{input_str}",
+                            'icon': '🔧',
+                            'expandable': len(input_str) > 150
                         }
 
-                # Tool result
-                elif hasattr(item, 'type') and item.type == 'tool_result':
+                # TOOL RESULT BLOCK - Check by class name
+                elif item_class_name == 'ToolResultBlock':
                     tool_id = getattr(item, 'tool_use_id', 'unknown')
                     result_content = getattr(item, 'content', '')
+                    is_error = getattr(item, 'is_error', False)
+
                     # Extract useful info from result
-                    if isinstance(result_content, list) and len(result_content) > 0:
+                    if isinstance(result_content, str):
+                        result_str = result_content
+                    elif isinstance(result_content, list) and len(result_content) > 0:
                         first_item = result_content[0]
                         if hasattr(first_item, 'text'):
-                            result_preview = first_item.text[:150] + '...' if len(first_item.text) > 150 else first_item.text
+                            result_str = first_item.text
                         else:
-                            result_preview = str(result_content)[:150]
+                            result_str = str(result_content)
                     else:
-                        result_preview = str(result_content)[:150]
+                        result_str = str(result_content)
 
-                    return {
-                        'timestamp': timestamp,
-                        'type': 'result',
-                        'content': f"Result: {result_preview}",
-                        'icon': '✅'
-                    }
+                    preview = result_str[:200] + '...' if len(result_str) > 200 else result_str
 
-                # Text output
-                elif hasattr(item, 'type') and item.type == 'text':
-                    text_content = getattr(item, 'text', '')
-                    if text_content:
-                        preview = text_content[:200] + '...' if len(text_content) > 200 else text_content
+                    if is_error:
                         return {
                             'timestamp': timestamp,
-                            'type': 'text',
-                            'content': preview,
-                            'icon': '💬'
+                            'type': 'error',
+                            'content': f"Error: {preview}",
+                            'full_content': f"Error:\n{result_str}",
+                            'icon': '❌',
+                            'expandable': len(result_str) > 200
+                        }
+                    else:
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'result',
+                            'content': f"✓ {preview}",
+                            'full_content': result_str,
+                            'icon': '✅',
+                            'expandable': len(result_str) > 200
                         }
 
         # Error events
         if hasattr(event, 'error'):
+            error_str = str(event.error)
             return {
                 'timestamp': timestamp,
                 'type': 'error',
-                'content': str(event.error),
-                'icon': '❌'
+                'content': error_str,
+                'full_content': error_str,
+                'icon': '❌',
+                'expandable': False
             }
 
         # Skip events we don't recognize
