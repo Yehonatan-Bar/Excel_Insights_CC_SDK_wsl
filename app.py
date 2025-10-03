@@ -181,6 +181,21 @@ def view_dashboard_content(run_id):
         return "Dashboard not found", 404
 
 
+@app.route('/dashboard-content/<run_id>/<filename>')
+def serve_visualization_file(run_id, filename):
+    """Serve individual visualization files from session directory (safety net for multi-file dashboards)."""
+    # Security: Only allow .html, .json files
+    if not (filename.endswith('.html') or filename.endswith('.json')):
+        return "Invalid file type", 400
+
+    file_path = Path(app.config['OUTPUT_FOLDER']) / run_id / filename
+
+    if file_path.exists() and file_path.is_file():
+        return send_file(file_path)
+    else:
+        return f"File not found: {filename}", 404
+
+
 @app.route('/refine/<run_id>', methods=['POST'])
 def refine_analysis(run_id):
     """Refine existing analysis based on user feedback."""
