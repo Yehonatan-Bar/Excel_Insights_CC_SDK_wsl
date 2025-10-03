@@ -98,18 +98,69 @@ class ExcelAnalysisAgent:
                             'icon': '💭'
                         }
 
-                # Tool use
+                # Tool use (ToolUseBlock)
                 elif hasattr(item, 'type') and item.type == 'tool_use':
                     tool_name = getattr(item, 'name', 'unknown_tool')
                     tool_input = getattr(item, 'input', {})
-                    # Format tool call nicely
-                    input_str = json.dumps(tool_input, indent=2)[:150]
+                    # Format tool call nicely based on tool type
+                    if tool_name == 'Edit':
+                        file_path = tool_input.get('file_path', '?')
+                        content_preview = f"Editing {file_path}"
+                    elif tool_name == 'Bash':
+                        command = tool_input.get('command', '?')[:100]
+                        content_preview = f"Running: {command}"
+                    elif tool_name == 'Write':
+                        file_path = tool_input.get('file_path', '?')
+                        content_preview = f"Writing {file_path}"
+                    elif tool_name == 'Read':
+                        file_path = tool_input.get('file_path', '?')
+                        content_preview = f"Reading {file_path}"
+                    else:
+                        input_str = json.dumps(tool_input, indent=2)[:100]
+                        content_preview = f"{tool_name}({input_str}...)"
+
                     return {
                         'timestamp': timestamp,
                         'type': 'tool',
-                        'content': f"{tool_name}({input_str}...)",
+                        'content': content_preview,
                         'icon': '🔧'
                     }
+
+                # Also check for ToolUseBlock class directly
+                elif type(item).__name__ == 'ToolUseBlock':
+                    tool_name = getattr(item, 'name', 'unknown_tool')
+                    tool_input = getattr(item, 'input', {})
+                    if tool_name == 'Edit':
+                        file_path = tool_input.get('file_path', '?')
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"Editing {file_path}",
+                            'icon': '✏️'
+                        }
+                    elif tool_name == 'Bash':
+                        command = tool_input.get('command', '?')[:100]
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"Running: {command}",
+                            'icon': '⚙️'
+                        }
+                    elif tool_name == 'Write':
+                        file_path = tool_input.get('file_path', '?')
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"Writing {file_path}",
+                            'icon': '📝'
+                        }
+                    else:
+                        return {
+                            'timestamp': timestamp,
+                            'type': 'tool',
+                            'content': f"{tool_name}(...)",
+                            'icon': '🔧'
+                        }
 
                 # Tool result
                 elif hasattr(item, 'type') and item.type == 'tool_result':

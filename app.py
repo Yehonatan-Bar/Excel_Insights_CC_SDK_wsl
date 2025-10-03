@@ -185,4 +185,6 @@ def check_status(run_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Disable reloader to prevent Flask from restarting when agent creates/edits files
+    # Keep debug=True for error messages, but use_reloader=False to prevent auto-restart
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
