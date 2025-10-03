@@ -61,7 +61,86 @@ def build_windows_package():
         f.write(f"ANTHROPIC_API_KEY={api_key}\n")
     print(f"\n✅ Created .env with embedded API key")
 
-    # Create batch launcher for Windows
+    # Create FIRST-TIME SETUP script for Windows
+    setup_bat = build_dir / 'SETUP_FIRST_TIME.bat'
+    with open(setup_bat, 'w') as f:
+        f.write('''@echo off
+echo ========================================
+echo Excel Insights - FIRST TIME SETUP
+echo ========================================
+echo.
+echo This script will:
+echo   1. Check if Python is installed
+echo   2. Create virtual environment (venv)
+echo   3. Download and install all dependencies
+echo.
+echo After setup, you can run START_HERE.bat anytime
+echo (No internet needed after this setup!)
+echo.
+echo This may take 2-5 minutes...
+echo.
+pause
+
+REM Check if Python is installed
+echo [1/3] Checking Python installation...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo ERROR: Python not found!
+    echo.
+    echo Please install Python 3.10+ from: https://www.python.org/downloads/
+    echo IMPORTANT: Check "Add Python to PATH" during installation!
+    echo.
+    pause
+    exit /b 1
+)
+python --version
+echo.
+
+REM Create virtual environment
+echo [2/3] Creating virtual environment...
+if exist "venv" (
+    echo Virtual environment already exists. Deleting old one...
+    rmdir /s /q venv
+)
+python -m venv venv
+if errorlevel 1 (
+    echo ERROR: Failed to create virtual environment
+    pause
+    exit /b 1
+)
+echo Virtual environment created successfully!
+echo.
+
+REM Install dependencies
+echo [3/3] Installing dependencies (this may take a few minutes)...
+call venv\\Scripts\\activate.bat
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to install dependencies
+    echo Make sure you have internet connection
+    echo.
+    pause
+    exit /b 1
+)
+
+echo.
+echo ========================================
+echo SUCCESS! Setup Complete!
+echo ========================================
+echo.
+echo All dependencies are now installed in the 'venv' folder.
+echo You can now run START_HERE.bat anytime - no internet needed!
+echo.
+echo Next step: Double-click START_HERE.bat to launch the app
+echo.
+pause
+''')
+    print(f"✅ Created first-time setup: SETUP_FIRST_TIME.bat")
+
+    # Create batch launcher for Windows (assumes venv already exists)
     launcher_bat = build_dir / 'START_HERE.bat'
     with open(launcher_bat, 'w') as f:
         f.write('''@echo off
@@ -69,57 +148,35 @@ echo ========================================
 echo Excel Insights Dashboard - AI Powered
 echo ========================================
 echo.
-echo Starting Flask server...
-echo Open your browser to: http://localhost:5000
-echo.
-echo Press Ctrl+C to stop the server
-echo.
 
-REM Check if Python is installed
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python not found!
-    echo Please install Python 3.10+ from https://www.python.org/downloads/
-    echo Make sure to check "Add Python to PATH" during installation
+REM Check if setup was run
+if not exist "venv" (
+    echo.
+    echo ERROR: Setup not completed!
+    echo.
+    echo Please run SETUP_FIRST_TIME.bat first to install dependencies.
+    echo.
     pause
     exit /b 1
 )
 
-REM Check if virtual environment exists
-if not exist "venv" (
-    echo Creating virtual environment...
-    python -m venv venv
-    if errorlevel 1 (
-        echo ERROR: Failed to create virtual environment
-        pause
-        exit /b 1
-    )
-)
-
-REM Activate virtual environment and install dependencies
+REM Activate virtual environment
 call venv\\Scripts\\activate.bat
 if errorlevel 1 (
     echo ERROR: Failed to activate virtual environment
+    echo Try running SETUP_FIRST_TIME.bat again
     pause
     exit /b 1
 )
 
-REM Install dependencies if needed
-if not exist "venv\\Lib\\site-packages\\flask" (
-    echo Installing dependencies...
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo ERROR: Failed to install dependencies
-        pause
-        exit /b 1
-    )
-)
-
 REM Run the Flask app
+echo Starting Flask server...
 echo.
 echo ========================================
-echo Server starting at http://localhost:5000
+echo Server running at: http://localhost:5000
 echo ========================================
+echo.
+echo Press Ctrl+C to stop the server
 echo.
 python app.py
 
@@ -198,18 +255,42 @@ Excel Insights Dashboard - AI Powered
 
 🚀 QUICK START FOR WINDOWS:
 
+STEP 1: ONE-TIME SETUP (First time only)
+----------------------------------------
 1. Make sure Python 3.10+ is installed
    - Download from: https://www.python.org/downloads/
    - IMPORTANT: Check "Add Python to PATH" during installation!
 
-2. Double-click "START_HERE.bat" to launch the app
-   - First run will install dependencies (takes ~2 minutes)
+2. Double-click "SETUP_FIRST_TIME.bat"
+   - This creates a virtual environment (venv folder)
+   - Downloads and installs all dependencies
+   - Takes 2-5 minutes (needs internet connection)
+   - You only need to do this ONCE!
+
+STEP 2: DAILY USE (After setup)
+--------------------------------
+1. Double-click "START_HERE.bat" to launch the app
+   - No internet needed!
+   - Starts immediately (uses pre-installed venv)
    - Browser will NOT open automatically
 
-3. Open your browser and go to:
+2. Open your browser and go to:
    http://localhost:5000
 
-4. Upload an Excel file (.xlsx or .xls) and watch the AI work!
+3. Upload an Excel file (.xlsx or .xls) and watch the AI work!
+
+========================================
+IMPORTANT NOTES:
+========================================
+
+✅ After running SETUP_FIRST_TIME.bat once, the 'venv' folder contains
+   all dependencies. You can copy this entire folder to another Windows
+   PC and use START_HERE.bat directly (no internet needed!)
+
+✅ The venv folder is ~100-200 MB but makes the package fully portable
+
+✅ If you move this folder to another PC, just run START_HERE.bat
+   (skip SETUP_FIRST_TIME.bat if venv folder already exists)
 
 ========================================
 ALTERNATIVE LAUNCHER:
@@ -233,18 +314,37 @@ If you need to change it, edit the .env file:
 TROUBLESHOOTING:
 ========================================
 
+Problem: "Setup not completed" when running START_HERE.bat
+Solution: Run SETUP_FIRST_TIME.bat first to create the venv folder
+
 Problem: "Python not found"
 Solution: Install Python from https://www.python.org/downloads/
           Make sure to check "Add Python to PATH"!
 
 Problem: "Module not found" errors
-Solution: Delete the "venv" folder and run START_HERE.bat again
+Solution: Delete the "venv" folder and run SETUP_FIRST_TIME.bat again
 
 Problem: Browser shows "Connection refused"
 Solution: Wait 10-15 seconds after starting, then refresh browser
 
 Problem: Analysis stuck or failing
 Solution: Check that you have API credits at https://console.anthropic.com/
+
+Problem: Want to update dependencies
+Solution: Delete "venv" folder and run SETUP_FIRST_TIME.bat again
+
+========================================
+FOLDER STRUCTURE AFTER SETUP:
+========================================
+
+Excel_Insights_Windows/
+├── SETUP_FIRST_TIME.bat   ← Run this once
+├── START_HERE.bat         ← Run this daily
+├── venv/                  ← Created by setup (100-200 MB)
+│   └── (all dependencies installed here)
+├── .env                   ← Your API key
+├── app.py                 ← Application files
+└── ...
 
 ========================================
 FEATURES:
@@ -255,6 +355,8 @@ FEATURES:
 💡 Smart insights and pattern detection
 🎨 Interactive dashboards
 🧠 Watch the AI think and work in real-time
+🎨 Color-coded activity monitor with expand/collapse
+📱 Works offline after initial setup!
 
 ========================================
 SUPPORT:
@@ -289,6 +391,36 @@ outputs/
 ''')
     print(f"✅ Created .gitignore")
 
+    # Ask if user wants to pre-install venv (only works if building on Windows)
+    print("\n" + "=" * 70)
+    if sys.platform == 'win32':
+        print("🪟 Windows detected! Do you want to pre-install dependencies?")
+        print("This will create a fully self-contained package.")
+        response = input("Pre-install dependencies now? (y/n): ").strip().lower()
+
+        if response == 'y':
+            print("\n📦 Creating virtual environment and installing dependencies...")
+            print("This may take 2-5 minutes...\n")
+
+            # Create venv
+            import subprocess
+            venv_path = build_dir / 'venv'
+            subprocess.run([sys.executable, '-m', 'venv', str(venv_path)], check=True)
+
+            # Install dependencies
+            pip_path = venv_path / 'Scripts' / 'pip.exe'
+            subprocess.run([
+                str(pip_path), 'install', '-r', str(build_dir / 'requirements.txt')
+            ], check=True)
+
+            print("✅ Dependencies pre-installed! Package is fully self-contained.")
+            print("📦 Package size with venv:", f"{get_dir_size(build_dir):.2f} MB")
+        else:
+            print("📋 Dependencies will be installed on first run on target PC")
+    else:
+        print("ℹ️  Building on Linux/WSL - venv cannot be pre-created for Windows")
+        print("📋 Dependencies will be installed when SETUP_FIRST_TIME.bat is run on Windows PC")
+
     # Summary
     print("\n" + "=" * 70)
     print("✅ Windows Package Built Successfully!")
@@ -298,18 +430,27 @@ outputs/
     print("\n📦 Package contents:")
     print("  • Python source files (app.py, agent_service.py, etc.)")
     print("  • Templates and static files")
-    print("  • START_HERE.bat (Windows batch launcher)")
+    print("  • SETUP_FIRST_TIME.bat (one-time dependency installer)")
+    print("  • START_HERE.bat (daily launcher)")
     print("  • START_HERE.ps1 (PowerShell launcher)")
     print("  • .env file with embedded API key")
     print("  • README_WINDOWS.txt (setup instructions)")
+    if (build_dir / 'venv').exists():
+        print("  • venv/ folder (all dependencies pre-installed!)")
     print("\n🎉 Ready to distribute!")
     print("\n📋 To use on Windows:")
     print(f"  1. Copy the entire '{build_dir.name}' folder to a Windows PC")
-    print("  2. Double-click 'START_HERE.bat'")
-    print("  3. Open browser to http://localhost:5000")
-    print("\n⚠️  Requirements on target Windows PC:")
-    print("  • Python 3.10+ (with 'Add to PATH' enabled)")
-    print("  • Internet connection (for pip install on first run)")
+    if (build_dir / 'venv').exists():
+        print("  2. Double-click 'START_HERE.bat' (dependencies already installed!)")
+        print("  3. Open browser to http://localhost:5000")
+        print("\n✅ NO INTERNET NEEDED - fully self-contained!")
+    else:
+        print("  2. Double-click 'SETUP_FIRST_TIME.bat' (one-time, needs internet)")
+        print("  3. Then run 'START_HERE.bat' anytime (no internet needed)")
+        print("  4. Open browser to http://localhost:5000")
+        print("\n⚠️  Requirements on target Windows PC:")
+        print("  • Python 3.10+ (with 'Add to PATH' enabled)")
+        print("  • Internet connection (for SETUP_FIRST_TIME.bat only)")
     print("=" * 70)
 
 def get_dir_size(path):
