@@ -57,12 +57,15 @@ python app.py
 ## ✨ Key Features
 
 ### 🤖 Real-Time Activity Monitor (NEW!)
-Watch the AI agent work in real-time with a live activity log showing:
-- **Thinking blocks** - See the agent's reasoning process
-- **Tool executions** - Track MCP tools, file edits, bash commands
-- **Code writing** - Watch Python scripts being created
-- **Results** - View tool outputs and data
-- **Timestamps** - Know exactly when each action occurred
+Watch the AI agent work in real-time with a beautiful live activity log:
+- **🧠 Thinking blocks** - See the agent's reasoning process (expandable)
+- **💬 Agent talking** - Read agent's commentary and explanations
+- **⚙️ Tool executions** - Track MCP tools, file edits, bash commands
+- **📝 Code writing** - Watch Python scripts being created
+- **✅ Results** - View tool outputs and data (expandable if long)
+- **⏰ Timestamps** - Know exactly when each action occurred
+- **🎨 Color-coded** - Different colors for different event types
+- **📖 Expandable** - Click `[expand]` to see full content of long entries
 
 ### 🚀 Full AI Freedom
 The agent is **not restricted** to specific tools or methods:
