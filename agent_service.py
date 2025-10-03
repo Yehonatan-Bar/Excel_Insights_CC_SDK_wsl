@@ -238,12 +238,16 @@ class ExcelAnalysisAgent:
 - Combine methods as needed
 
 📋 DELIVERABLES (REQUIRED):
-1. **Interactive HTML Dashboard** saved as `dashboard.html` with:
-   - 5-10+ interactive visualizations (Plotly charts embedded as HTML)
+1. **Single Self-Contained HTML Dashboard** saved as `dashboard.html` with:
+   - 5-10+ interactive Plotly visualizations EMBEDDED INLINE (NOT as separate iframe files)
+   - Use Plotly's to_html(include_plotlyjs='cdn', full_html=False, div_id='unique_id')
+   - Embed each chart in a <div> element directly in the HTML
+   - DO NOT create separate .html files for each visualization
+   - DO NOT use iframes - embed all charts inline in ONE file
    - Statistical insights and key findings
-   - Professional styling and layout
+   - Professional styling and layout with CSS
    - Executive summary
-   - Organized sections
+   - Organized sections with tabs/navigation using JavaScript
 
 2. **Comprehensive Analysis** including:
    - Data structure and quality assessment
@@ -265,14 +269,18 @@ class ExcelAnalysisAgent:
    - Calculate means, medians, correlations, etc.
 
 3. **Create visualizations**
-   - Use create_visualization tool OR write Plotly code directly
+   - Write Plotly code directly in Python (DO NOT use create_visualization tool)
    - Create 5-10+ charts: bar, line, scatter, pie, heatmaps, box plots
-   - Save each as interactive HTML
+   - Convert to inline HTML using: fig.to_html(include_plotlyjs='cdn', full_html=False, div_id='chart1')
+   - Store the HTML strings in variables, NOT separate files
 
-4. **Build dashboard**
-   - Use create_dashboard tool OR write HTML combining all charts
-   - Make it beautiful with CSS styling
-   - Include insights and commentary
+4. **Build single-file dashboard**
+   - Create ONE complete HTML file with all charts embedded inline
+   - Combine all chart HTML strings into <div> sections
+   - Add professional CSS styling for layout and design
+   - Include insights, metrics, and commentary
+   - Use JavaScript for tabs/interactivity if needed
+   - CRITICAL: Everything must be in ONE dashboard.html file
 
 ⏰ TIME: Take 3-5 minutes. Quality and depth over speed.
 🔧 APPROACH: Whatever works best! Be creative and thorough.
@@ -311,10 +319,12 @@ The user has reviewed your previous analysis and provided feedback above. Your j
    - Make it better based on their feedback
 
 ✅ REQUIREMENTS:
-- Create `dashboard.html` with 5-10+ interactive Plotly visualizations
+- Create ONE self-contained `dashboard.html` with 5-10+ interactive Plotly visualizations EMBEDDED INLINE
+- Use fig.to_html(include_plotlyjs='cdn', full_html=False) - NO separate files or iframes
 - Address ALL points in the user's feedback
 - Include statistical insights and key findings
 - Professional styling and clear organization
+- CRITICAL: All charts inline in ONE file
 
 💡 APPROACH:
 - Use any tools or methods that work best
@@ -337,11 +347,13 @@ Begin your refinement now!"""
 Analyze this Excel file comprehensively and create a stunning interactive HTML dashboard.
 
 ✅ REQUIREMENTS:
-1. Create `dashboard.html` in the output directory
-2. Include 5-10+ interactive Plotly visualizations
-3. Add statistical insights and key findings
-4. Make it visually impressive with professional styling
-5. Organize into clear sections (Overview, Visualizations, Insights, Recommendations)
+1. Create ONE self-contained `dashboard.html` file in the output directory
+2. Include 5-10+ interactive Plotly visualizations EMBEDDED INLINE (not as separate files)
+3. Use fig.to_html(include_plotlyjs='cdn', full_html=False) to embed charts
+4. Add statistical insights and key findings
+5. Make it visually impressive with professional styling
+6. Organize into clear sections (Overview, Visualizations, Insights, Recommendations)
+7. CRITICAL: All charts must be inline in dashboard.html - do NOT create separate viz files
 
 💡 APPROACH OPTIONS:
 - Use the MCP tools (analyze_excel, create_visualization, create_dashboard, etc.)
