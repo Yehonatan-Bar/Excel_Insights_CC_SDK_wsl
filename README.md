@@ -1,6 +1,33 @@
-# 📊 Excel Insights Dashboard - AI Powered (UNLIMITED MODE)
+# 📊 Excel Insights Dashboard - AI Powered
 
-**Deep, comprehensive Excel analysis using Claude Agent SDK (Sonnet 4.5) with NO TIME LIMITS**
+**Deep, comprehensive Excel analysis using Claude Agent SDK (Sonnet 4.5) with real-time activity monitoring**
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Claude Sonnet 4.5](https://img.shields.io/badge/Claude-Sonnet%204.5-orange.svg)](https://www.anthropic.com/claude)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone and setup
+git clone <repo-url>
+cd Excel_Insights_CC_SDK_wsl
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Set API key
+echo "ANTHROPIC_API_KEY=sk-ant-api03-YOUR_KEY_HERE" > .env
+
+# 3. Verify setup
+python test_api_key.py        # Should show ✅
+python test_sdk_connection.py # Should show ✅
+
+# 4. Run!
+python app.py
+
+# 5. Open http://localhost:5000 and upload Excel file
+```
 
 ---
 
@@ -8,8 +35,13 @@
 
 1. **Upload** an Excel file (.xlsx, .xls) via web interface
 2. **Claude Agent SDK** performs **DEEP, EXHAUSTIVE analysis** (3-5+ minutes)
-3. **AI reasoning** with **unlimited tools and capabilities**
-4. **8 Advanced MCP Tools** for comprehensive analysis:
+3. **Full AI Freedom** - Agent uses MCP tools, Python code, bash commands, or any combination
+4. **🤖 Real-Time Activity Monitor** - Watch the agent think and work:
+   - 💭 See agent's reasoning and thoughts
+   - 🔧 Monitor tool executions (MCP tools, Edit, Bash, Write, Read)
+   - ✅ View tool results in real-time
+   - 📊 Track progress with timestamps
+5. **8 Advanced MCP Tools** for comprehensive analysis:
    - Data exploration & statistics
    - Correlation analysis with heatmaps
    - Outlier detection (IQR method)
@@ -17,8 +49,42 @@
    - Trend analysis with moving averages
    - 5-10+ visualizations (bar, line, scatter, pie, heatmaps)
    - Professional dashboard generation
-5. **No timeouts** - Agent works as long as needed
-6. **Real-time progress tracking** with elapsed time
+6. **No timeouts** - Agent works as long as needed
+7. **Real-time progress tracking** with elapsed time
+
+---
+
+## ✨ Key Features
+
+### 🤖 Real-Time Activity Monitor (NEW!)
+Watch the AI agent work in real-time with a live activity log showing:
+- **Thinking blocks** - See the agent's reasoning process
+- **Tool executions** - Track MCP tools, file edits, bash commands
+- **Code writing** - Watch Python scripts being created
+- **Results** - View tool outputs and data
+- **Timestamps** - Know exactly when each action occurred
+
+### 🚀 Full AI Freedom
+The agent is **not restricted** to specific tools or methods:
+- Can write custom Python analysis code
+- Can use bash commands
+- Can combine MCP tools with custom scripts
+- Chooses the best approach for each dataset
+
+### 📊 Comprehensive Analysis
+- 5-10+ interactive Plotly visualizations
+- Statistical analysis (mean, median, correlations, outliers)
+- Correlation heatmaps
+- Trend detection and time series analysis
+- Group comparisons and segmentation
+- Professional HTML dashboard output
+
+### ⚡ Production Ready
+- Background processing (no request timeouts)
+- Auto-reload disabled (prevents crashes during file operations)
+- Error handling and fallback dashboards
+- API key validation on startup
+- Test scripts for verification
 
 ---
 
@@ -68,18 +134,31 @@ pip install -r requirements.txt
 
 ### 2. Configure API Key
 
-Create `.env` file with your Anthropic API key:
+**IMPORTANT:** The API key must be set for the SDK to work.
 
+**Option 1: Use .env file (Recommended)**
 ```bash
+# Create .env file
 cp .env.example .env
 nano .env  # Add your ANTHROPIC_API_KEY
 ```
 
-**Or export it directly:**
-
-```bash
-export ANTHROPIC_API_KEY="your-api-key-here"
+Your `.env` file should contain:
 ```
+ANTHROPIC_API_KEY=sk-ant-api03-YOUR_ACTUAL_KEY_HERE
+```
+
+**Option 2: Export it directly (Temporary)**
+```bash
+export ANTHROPIC_API_KEY="sk-ant-api03-YOUR_ACTUAL_KEY_HERE"
+```
+
+**Verify API key is set:**
+```bash
+python test_api_key.py
+```
+
+You should see: ✅ ANTHROPIC_API_KEY is set!
 
 ### 3. Install Claude Code CLI (if not already installed)
 
@@ -119,8 +198,15 @@ The app will start at: **http://localhost:5000**
 - Click or drag-drop your `.xlsx` or `.xls` file
 - Click **"Analyze with AI"**
 
-### Step 3: Wait for Deep Analysis (3-5 minutes)
-- **Real-time progress tracking** shows elapsed time
+### Step 3: Watch the Agent Work (3-5 minutes)
+- **🤖 Activity Monitor** appears showing real-time agent activity:
+  - 💭 **Thinking** - Agent's reasoning process
+  - ✏️ **Editing** - Code modifications
+  - ⚙️ **Running** - Bash commands and scripts
+  - 📝 **Writing** - File creation
+  - 🔧 **Tool Use** - MCP tool calls
+  - ✅ **Results** - Tool outputs and data
+- **Progress tracker** shows elapsed time
 - Claude Agent SDK performs **comprehensive analysis**:
   - Explores ALL data relationships
   - Creates correlation matrix & heatmap
@@ -134,6 +220,7 @@ The app will start at: **http://localhost:5000**
 ### Step 4: View Dashboard
 - Automatically redirected to interactive dashboard
 - See charts, insights, and statistics
+- Professional HTML output with embedded Plotly visualizations
 
 ---
 
@@ -141,20 +228,25 @@ The app will start at: **http://localhost:5000**
 
 ```
 Excel_Insights_CC_SDK_wsl/
-├── app.py                  # Flask web application
-├── agent_service.py        # Claude Agent SDK integration
-├── excel_mcp_tools.py      # Custom MCP tools for Excel analysis
-├── requirements.txt        # Python dependencies
-├── .env                    # API key configuration
+├── app.py                      # Flask web application (auto-reloader disabled)
+├── agent_service.py            # Claude Agent SDK integration with event streaming
+├── excel_mcp_tools.py          # Custom MCP tools for Excel analysis
+├── requirements.txt            # Python dependencies
+├── .env                        # API key configuration (create this!)
+├── .env.example                # Example .env template
+├── test_api_key.py            # Test script to verify API key is set
+├── test_sdk_connection.py     # Test script to verify SDK connection
 ├── templates/
-│   └── index.html         # Upload page UI
-├── uploads/               # Uploaded Excel files
-├── outputs/               # Generated dashboards (by run_id)
+│   └── index.html             # Upload page with Activity Monitor UI
+├── static/                     # Static assets (CSS, JS)
+├── uploads/                    # Uploaded Excel files (auto-created)
+├── outputs/                    # Generated dashboards by run_id (auto-created)
 │   └── 20251003_123456/
-│       ├── dashboard.html
-│       ├── chart1.html
-│       └── chart2.html
-└── README.md              # This file
+│       ├── dashboard.html     # Final interactive dashboard
+│       ├── chart1.html        # Individual Plotly charts
+│       ├── chart2.html
+│       └── *.py               # Python scripts created by agent
+└── README.md                   # This file
 ```
 
 ---
@@ -204,42 +296,57 @@ Excel_Insights_CC_SDK_wsl/
 
 ---
 
-## 🤖 How the Agent Works (UNLIMITED MODE)
+## 🤖 How the Agent Works (FULL FREEDOM MODE)
 
-The Claude Agent SDK runs with **NO RESTRICTIONS**:
+The Claude Agent SDK runs with **COMPLETE FREEDOM**:
+
+### Agent Capabilities:
+✅ **Use MCP Tools** - Convenient pre-built analysis functions
+✅ **Write Python Code** - Create custom analysis scripts with pandas, plotly, scipy
+✅ **Run Bash Commands** - Execute system commands
+✅ **Edit Files** - Modify code and configurations
+✅ **Combine Approaches** - Mix tools, code, and commands for best results
+
+The agent **chooses the most effective approach** for each task!
 
 ### System Prompt (Deep Analysis Mode):
 ```
-🎯 YOUR MISSION: Perform DEEP, EXHAUSTIVE analysis. Take 3-5 minutes.
+🎯 YOUR MISSION: Create stunning interactive HTML dashboard with deep insights
 
-📊 COMPREHENSIVE WORKFLOW:
-1. DEEP DATA EXPLORATION - Understand ALL columns and relationships
-2. ADVANCED STATISTICAL INSIGHTS - Correlations, patterns, anomalies
-3. COMPREHENSIVE VISUALIZATIONS - Create 5-10+ charts from different angles
-4. MULTI-LAYERED INSIGHTS - Business, statistical, predictive insights
-5. PROFESSIONAL DASHBOARD - Combine ALL into stunning output
+✨ YOU HAVE COMPLETE FREEDOM:
+- Use MCP tools (convenient for common tasks)
+- Write Python code (more flexible and powerful)
+- Run bash commands
+- Use ANY approach that produces the best results
 
-⏰ TIME: 3-5 minutes EXPECTED
-🔧 TOOLS: ALL tools available - use extensively!
-💡 CREATIVITY: This is your masterpiece.
+📋 DELIVERABLES:
+- 5-10+ interactive Plotly visualizations
+- Statistical insights and findings
+- Professional HTML dashboard
+- Executive summary
+
+⏰ TIME: 3-5 minutes for quality analysis
+🎯 GOAL: Impress with deep insights and beautiful visualizations
 ```
 
 ### Execution Flow:
-1. **Receives prompt**: "DEEP ANALYSIS REQUEST - Take your time (3-5 min)"
-2. **Unlimited tool access**: Agent can use ANY available tool
+1. **Receives prompt**: "DEEP ANALYSIS REQUEST - Take your time"
+2. **Full tool access**: MCP tools + Edit + Bash + Write + Read
 3. **Max 100 turns**: Allows extensive analysis
-4. **No timeouts**: Background threading in Flask
-5. **Real-time progress**: Status polling every 2 seconds
-6. **Autonomous reasoning**: Agent decides which tools to use and when
+4. **No timeouts**: Background threading in Flask (auto-reloader disabled)
+5. **Real-time activity streaming**: Events sent to frontend every 2 seconds
+6. **Autonomous reasoning**: Agent decides optimal approach
 
-### Typical Tool Usage Pattern:
+### Typical Execution Pattern:
 ```
-analyze_excel → generate_insights → correlation_analysis →
-detect_outliers (for each numeric column) →
-create_visualization × 5-10 (different perspectives) →
-group_comparison (if categorical data exists) →
-trend_analysis (if time series exists) →
-create_dashboard (combine everything)
+💭 Thinking: "I'll analyze this data comprehensively..."
+📝 Writing: comprehensive_analysis.py (pandas + plotly code)
+⚙️ Running: python comprehensive_analysis.py
+💭 Thinking: "Great! Now I'll create visualizations..."
+🔧 Tool: create_visualization(type="bar", ...)
+🔧 Tool: create_visualization(type="scatter", ...)
+📝 Writing: dashboard.html (combining all charts)
+✅ Complete!
 ```
 
 ---
@@ -279,23 +386,61 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Error: "ANTHROPIC_API_KEY not set"
+### Error: "ANTHROPIC_API_KEY not set" or "Control request timeout: initialize"
+**This is the most common error!** The SDK can't find your API key.
+
+**Solution:**
 ```bash
-# Export API key
-export ANTHROPIC_API_KEY="sk-ant-..."
-# Or add to .env file
+# 1. Test if API key is set
+python test_api_key.py
+
+# 2. If NOT set, create .env file:
+echo "ANTHROPIC_API_KEY=sk-ant-api03-YOUR_KEY_HERE" > .env
+
+# 3. Or export it:
+export ANTHROPIC_API_KEY="sk-ant-api03-YOUR_KEY_HERE"
+
+# 4. Verify again:
+python test_api_key.py
+# Should show: ✅ ANTHROPIC_API_KEY is set!
+
+# 5. Test SDK connection:
+python test_sdk_connection.py
+# Should show: ✅ SUCCESS! SDK is working correctly.
 ```
+
+**Important:** The API key must be in the environment when you run `python app.py`
 
 ### Error: "Claude CLI not found"
 ```bash
-# Install Claude Code CLI
+# Install Claude Code CLI (required by SDK)
 npm install -g @anthropic-ai/claude-code
+
+# Verify:
+claude --version
 ```
 
+### Error: "Permission mode 'acceptAll' is invalid"
+This was fixed in the code. Valid modes are:
+- `bypassPermissions` (used by default - full freedom)
+- `acceptEdits` (accept file edits)
+- `default` (default behavior)
+- `plan` (plan mode)
+
+### Error: "Error: write EPIPE" or Flask keeps restarting
+**Fixed!** Flask auto-reloader is now disabled (`use_reloader=False`). This prevents Flask from restarting when the agent creates/edits files.
+
 ### Dashboard not generating
-- Check `outputs/<run_id>/` for error logs
+- Check `outputs/<run_id>/` for Python scripts and error logs
+- Look at Flask terminal for error messages
 - Ensure Excel file is valid (not corrupted)
-- Check API key has credits
+- Check API key has credits at https://console.anthropic.com/
+- Verify uploads/ directory is writable
+
+### Activity Monitor not showing events
+- Open browser console (F12) and check for JavaScript errors
+- Verify Flask is running without auto-reloader
+- Check that events are being received in `/status/<run_id>` response
 
 ---
 
@@ -309,23 +454,48 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-## 🚀 Next Steps
+## 🚀 Enhancement Ideas
 
-### Extend with More Tools:
-1. **Statistical tests** (t-test, ANOVA)
-2. **Machine learning** (clustering, regression)
-3. **Export to PDF/PowerPoint**
-4. **Email reports**
-5. **Real-time streaming** updates
+Want to extend the capabilities? Here are some ideas:
 
-### Example: Add Correlation Analysis
+### Additional Analysis Features:
+1. **Statistical tests** - Add t-tests, ANOVA, chi-square tests
+2. **Machine learning** - Clustering, regression, predictions
+3. **Advanced visualizations** - 3D plots, animated charts, Sankey diagrams
+4. **Data quality reports** - Detailed data profiling and quality scores
+5. **Comparative analysis** - Compare multiple Excel files
+
+### Export & Sharing:
+1. **PDF export** - Convert dashboard to PDF reports
+2. **PowerPoint export** - Auto-generate presentation slides
+3. **Email integration** - Send reports via email
+4. **Scheduled analysis** - Cron jobs for recurring analysis
+5. **API endpoints** - REST API for programmatic access
+
+### Performance Improvements:
+1. **Caching** - Cache analysis results for faster re-runs
+2. **Parallel processing** - Analyze multiple files simultaneously
+3. **Incremental analysis** - Only analyze changed data
+4. **Database storage** - Store results in PostgreSQL/MongoDB
+
+### Example: Adding a Custom MCP Tool
 ```python
-@tool("correlation_analysis", ...)
-async def correlation_analysis(args: Dict[str, Any]):
+# In excel_mcp_tools.py
+@tool(
+    name="statistical_tests",
+    description="Perform statistical hypothesis tests on data"
+)
+async def statistical_tests(args: Dict[str, Any]):
+    from scipy import stats
     df = pd.read_excel(args["file_path"])
-    corr = df.corr()
-    # Create heatmap...
-    return {"content": [...], "result": {...}}
+
+    # Perform t-test, ANOVA, etc.
+    results = {
+        "t_test": stats.ttest_ind(...),
+        "anova": stats.f_oneway(...)
+    }
+
+    return {"content": [...], "result": results}
 ```
 
 ---
@@ -368,12 +538,48 @@ MIT License - Feel free to modify and extend!
 
 ---
 
-## 🆘 Support
+## 🆘 Support & Resources
 
-- **Claude Agent SDK Docs**: [Coming soon]
-- **Issues**: Check Flask logs and `outputs/<run_id>/` for errors
-- **API Key Issues**: https://console.anthropic.com/
+### Documentation
+- **Claude Agent SDK**: https://docs.claude.com/en/api/agent-sdk/overview
+- **Python SDK Reference**: https://docs.claude.com/en/api/agent-sdk/python
+- **MCP Protocol**: https://modelcontextprotocol.io/
+
+### Debugging
+- Check Flask terminal for detailed logs
+- Look in `outputs/<run_id>/` for generated files and error logs
+- Use browser console (F12) to see frontend JavaScript logs
+- Run test scripts: `test_api_key.py` and `test_sdk_connection.py`
+
+### Common Issues
+- **API Key**: https://console.anthropic.com/ (check credits and validity)
+- **Permission errors**: Make sure `uploads/` and `outputs/` directories are writable
+- **Browser issues**: Try hard refresh (Ctrl+Shift+R) or different browser
+
+### Contributing
+Have improvements or bug fixes? Contributions welcome!
+
+---
+
+## 📸 Example Activity Monitor Output
+
+```
+🚀 [02:56:11] Analysis started - initializing Claude Agent SDK...
+💭 [02:56:15] I'll perform a comprehensive analysis of this Excel data...
+🔧 [02:56:17] analyze_excel(file_path="uploads/sales_data.xlsx")
+✅ [02:56:18] Result: 1000 rows, 5 columns [Date, Product, Sales, Region, Revenue]
+💭 [02:56:20] I notice potential correlations between Sales and Revenue...
+🔧 [02:56:22] correlation_analysis(file_path="uploads/sales_data.xlsx", ...)
+✅ [02:56:24] Result: Found 3 strong correlations (|r| > 0.7)
+📝 [02:56:26] Writing comprehensive_analysis.py
+⚙️ [02:56:28] Running: python comprehensive_analysis.py
+✅ [02:56:35] Result: Created 8 visualizations successfully
+📝 [02:56:37] Writing dashboard.html
+✅ [02:56:39] Analysis complete! Dashboard ready.
+```
 
 ---
 
 **Built with ❤️ using Claude Sonnet 4.5 and Claude Agent SDK**
+
+**Star ⭐ this repo if you find it useful!**

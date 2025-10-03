@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Analysis Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: calc(100vh - 200px);
+            border: none;
+        }
+
+        .refinement-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .refinement-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .refinement-title {
+            color: white;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .refinement-form {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .refinement-input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 60px;
+            font-family: inherit;
+        }
+
+        .refinement-input:focus {
+            outline: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .refinement-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            height: fit-content;
+        }
+
+        .refinement-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .refinement-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .refinement-examples {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        .refinement-examples strong {
+            color: white;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtext {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <iframe id="dashboardFrame" class="dashboard-container" src="/dashboard-content/{{ run_id }}"></iframe>
+
+    <div class="refinement-panel">
+        <div class="refinement-content">
+            <h3 class="refinement-title">💡 Refine Your Analysis</h3>
+            <form class="refinement-form" id="refinementForm">
+                <textarea
+                    class="refinement-input"
+                    id="refinementInput"
+                    placeholder="Request improvements, point out errors, or ask for specific insights...&#10;&#10;Examples:&#10;• Add a comparison between Region A and Region B&#10;• The correlation heatmap is missing - please add it&#10;• Analyze the trend for the last 6 months only&#10;• Add box plots to show outliers in sales data"
+                    rows="3"
+                ></textarea>
+                <button type="submit" class="refinement-btn" id="refinementBtn">
+                    🔄 Refine Analysis
+                </button>
+            </form>
+            <div class="refinement-examples">
+                <strong>Tip:</strong> Be specific! The agent will re-analyze with your feedback in mind.
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Refining your analysis...</div>
+        <div class="loading-subtext" id="loadingTime">Elapsed: 0s</div>
+    </div>
+
+    <script>
+        const form = document.getElementById('refinementForm');
+        const input = document.getElementById('refinementInput');
+        const btn = document.getElementById('refinementBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingTime = document.getElementById('loadingTime');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const userPrompt = input.value.trim();
+            if (!userPrompt) {
+                alert('Please enter your refinement request');
+                return;
+            }
+
+            // Show loading overlay
+            loadingOverlay.classList.add('active');
+            btn.disabled = true;
+
+            // Start elapsed time counter
+            const startTime = Date.now();
+            const timeInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                loadingTime.textContent = `Elapsed: ${elapsed}s`;
+            }, 1000);
+
+            try {
+                // Submit refinement request
+                const response = await fetch('/refine/{{ run_id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refinement_prompt: userPrompt
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Poll for completion
+                    const pollInterval = setInterval(async () => {
+                        const statusResponse = await fetch(`/status/${result.new_run_id}`);
+                        const status = await statusResponse.json();
+
+                        if (status.ready && status.dashboard_url) {
+                            clearInterval(pollInterval);
+                            clearInterval(timeInterval);
+                            // Reload to show new dashboard
+                            window.location.href = status.dashboard_url;
+                        } else if (status.status === 'error') {
+                            clearInterval(pollInterval);
+                            clearInterval(timeInterval);
+                            loadingOverlay.classList.remove('active');
+                            alert('Error during refinement: ' + (status.error || 'Unknown error'));
+                            btn.disabled = false;
+                        }
+                    }, 2000);
+                } else {
+                    clearInterval(timeInterval);
+                    loadingOverlay.classList.remove('active');
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                clearInterval(timeInterval);
+                loadingOverlay.classList.remove('active');
+                alert('Error submitting refinement: ' + error.message);
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

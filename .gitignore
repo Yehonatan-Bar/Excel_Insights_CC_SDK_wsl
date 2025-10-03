@@ -22,9 +22,9 @@ uploads/
 outputs/
 
 # Test Data Files (uncomment if you want to exclude test files)
-# *.xlsx
-# *.xls
-# *.csv
+*.xlsx
+*.xls
+*.csv
 
 # IDEs
 .vscode/

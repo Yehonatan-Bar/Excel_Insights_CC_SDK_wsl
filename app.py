@@ -61,11 +61,15 @@ def index():
     return render_template('index.html')
 
 
-def run_analysis_async(run_id, filepath, output_dir):
+def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, original_run_id=None):
     """Run analysis in background thread."""
     try:
-        analysis_jobs[run_id]['status'] = 'running'
-        analysis_jobs[run_id]['message'] = 'Claude Agent is deeply analyzing your data...'
+        if refinement_prompt:
+            analysis_jobs[run_id]['status'] = 'running'
+            analysis_jobs[run_id]['message'] = 'Claude Agent is refining your analysis...'
+        else:
+            analysis_jobs[run_id]['status'] = 'running'
+            analysis_jobs[run_id]['message'] = 'Claude Agent is deeply analyzing your data...'
 
         # Define event callback to receive real-time events
         def event_callback(log_entry):
@@ -75,23 +79,33 @@ def run_analysis_async(run_id, filepath, output_dir):
             analysis_jobs[run_id]['event_count'] += 1
             print(f"Total events now: {analysis_jobs[run_id]['event_count']}")
 
-        # Send initial event to test the system
-        event_callback({
-            'timestamp': datetime.now().strftime("%H:%M:%S"),
-            'type': 'text',
-            'content': 'Analysis started - initializing Claude Agent SDK...',
-            'icon': '🚀'
-        })
+        # Send initial event
+        if refinement_prompt:
+            event_callback({
+                'timestamp': datetime.now().strftime("%H:%M:%S"),
+                'type': 'text',
+                'content': f'Refinement started: "{refinement_prompt[:100]}..."',
+                'icon': '🔄'
+            })
+        else:
+            event_callback({
+                'timestamp': datetime.now().strftime("%H:%M:%S"),
+                'type': 'text',
+                'content': 'Analysis started - initializing Claude Agent SDK...',
+                'icon': '🚀'
+            })
 
         result = analyze_excel_file(
             file_path=filepath,
             output_dir=output_dir,
-            event_callback=event_callback
+            event_callback=event_callback,
+            refinement_prompt=refinement_prompt,
+            original_run_id=original_run_id
         )
 
         analysis_jobs[run_id]['status'] = 'completed'
         analysis_jobs[run_id]['result'] = result
-        analysis_jobs[run_id]['message'] = 'Analysis complete!'
+        analysis_jobs[run_id]['message'] = 'Analysis complete!' if not refinement_prompt else 'Refinement complete!'
 
     except Exception as e:
         analysis_jobs[run_id]['status'] = 'error'
@@ -146,13 +160,75 @@ def upload_file():
 
 @app.route('/dashboard/<run_id>')
 def view_dashboard(run_id):
-    """Display the generated dashboard."""
+    """Display the generated dashboard with refinement panel."""
+    dashboard_path = Path(app.config['OUTPUT_FOLDER']) / run_id / "dashboard.html"
+
+    if dashboard_path.exists():
+        # Return wrapper template with refinement form
+        return render_template('dashboard_wrapper.html', run_id=run_id)
+    else:
+        return "Dashboard not found", 404
+
+
+@app.route('/dashboard-content/<run_id>')
+def view_dashboard_content(run_id):
+    """Serve the raw dashboard HTML (for iframe)."""
     dashboard_path = Path(app.config['OUTPUT_FOLDER']) / run_id / "dashboard.html"
 
     if dashboard_path.exists():
         return send_file(dashboard_path)
     else:
         return "Dashboard not found", 404
+
+
+@app.route('/refine/<run_id>', methods=['POST'])
+def refine_analysis(run_id):
+    """Refine existing analysis based on user feedback."""
+    if run_id not in analysis_jobs:
+        return jsonify({"error": "Original analysis not found"}), 404
+
+    data = request.get_json()
+    refinement_prompt = data.get('refinement_prompt', '').strip()
+
+    if not refinement_prompt:
+        return jsonify({"error": "Refinement prompt is required"}), 400
+
+    original_job = analysis_jobs[run_id]
+    original_filename = original_job.get('filename', 'unknown')
+    original_filepath = os.path.join(app.config['UPLOAD_FOLDER'], original_filename)
+
+    # Check if original file still exists
+    if not os.path.exists(original_filepath):
+        return jsonify({"error": "Original Excel file not found"}), 404
+
+    # Generate new run_id for refinement
+    new_run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Initialize job tracking
+    analysis_jobs[new_run_id] = {
+        'status': 'starting',
+        'message': 'Refining analysis based on your feedback...',
+        'filename': original_filename,
+        'events': [],
+        'event_count': 0,
+        'is_refinement': True,
+        'original_run_id': run_id,
+        'refinement_prompt': refinement_prompt
+    }
+
+    # Start refinement in background thread
+    thread = threading.Thread(
+        target=run_analysis_async,
+        args=(new_run_id, original_filepath, app.config['OUTPUT_FOLDER'], refinement_prompt, run_id)
+    )
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "success": True,
+        "new_run_id": new_run_id,
+        "status_url": f"/status/{new_run_id}"
+    })
 
 
 @app.route('/status/<run_id>')

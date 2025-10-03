@@ -207,13 +207,15 @@ class ExcelAnalysisAgent:
         # Skip events we don't recognize
         return None
 
-    async def analyze_file(self, file_path: str, event_callback=None) -> dict:
+    async def analyze_file(self, file_path: str, event_callback=None, refinement_prompt=None, original_run_id=None) -> dict:
         """
         Analyze Excel file using Claude Agent SDK.
 
         Args:
             file_path: Path to uploaded Excel file
             event_callback: Optional callback function to receive real-time events
+            refinement_prompt: Optional user feedback/refinement request
+            original_run_id: Optional ID of original analysis (for refinement context)
 
         Returns:
             dict with dashboard_path, insights, and execution log
@@ -229,6 +231,7 @@ class ExcelAnalysisAgent:
 
 ✨ YOU HAVE COMPLETE FREEDOM:
 - Use MCP tools (convenient for common tasks)
+  * Excel analysis tools (analyze_excel, create_visualization, etc.)
 - Write Python code (more flexible and powerful)
 - Run bash commands
 - Use ANY approach that produces the best results
@@ -275,8 +278,56 @@ class ExcelAnalysisAgent:
 🔧 APPROACH: Whatever works best! Be creative and thorough.
 💡 GOAL: Impress the user with deep insights and beautiful visualizations."""
 
-        # User prompt with file path
-        user_prompt = f"""DEEP ANALYSIS REQUEST:
+        # Build user prompt based on whether this is a refinement or initial analysis
+        if refinement_prompt and original_run_id:
+            # Refinement mode - reference previous work
+            original_dir = self.output_dir / original_run_id
+            user_prompt = f"""ANALYSIS REFINEMENT REQUEST:
+
+📁 Excel File: {file_path}
+📂 Output Directory: {run_dir}
+🎯 Final Dashboard: {run_dir}/dashboard.html
+📋 Previous Analysis: {original_dir}
+
+🔄 USER FEEDBACK:
+{refinement_prompt}
+
+🚀 YOUR TASK:
+The user has reviewed your previous analysis and provided feedback above. Your job is to:
+
+1. **Review the previous analysis** (if it exists in {original_dir})
+   - Check what dashboards, charts, and insights were already created
+   - Understand what was done well and what was missing
+
+2. **Address the user's feedback**
+   - Fix any errors they pointed out
+   - Add any missing analysis they requested
+   - Improve visualizations based on their suggestions
+   - Focus on their specific requests
+
+3. **Create an IMPROVED dashboard** at {run_dir}/dashboard.html
+   - Include everything from before (if applicable)
+   - Add the new analysis/visualizations requested
+   - Make it better based on their feedback
+
+✅ REQUIREMENTS:
+- Create `dashboard.html` with 5-10+ interactive Plotly visualizations
+- Address ALL points in the user's feedback
+- Include statistical insights and key findings
+- Professional styling and clear organization
+
+💡 APPROACH:
+- Use any tools or methods that work best
+- MCP tools, Python code, or combination
+- Be thorough and creative
+
+⏰ TIME: Take 3-5 minutes to create an excellent refined analysis.
+🎯 GOAL: Deliver exactly what the user asked for!
+
+Begin your refinement now!"""
+        else:
+            # Initial analysis mode
+            user_prompt = f"""DEEP ANALYSIS REQUEST:
 
 📁 Excel File: {file_path}
 📂 Output Directory: {run_dir}
@@ -320,11 +371,18 @@ Begin your analysis now!"""
 
         print(f"DEBUG: API Key in environment: {api_key[:20]}... (length: {len(api_key)})")
 
+        # Configure MCP servers
+        # Note: Only using custom Excel tools for now
+        # Playwright MCP requires different configuration approach
+        mcp_servers = {
+            "excel_tools": self.mcp_server
+        }
+
         # Configure agent options - SDK will auto-detect API key from environment
         options = ClaudeAgentOptions(
             model="sonnet",
             system_prompt=system_prompt,
-            mcp_servers={"excel_tools": self.mcp_server},
+            mcp_servers=mcp_servers,
             permission_mode="bypassPermissions",  # Valid options: acceptEdits, bypassPermissions, default, plan
             cwd=str(run_dir),
             setting_sources=[],
@@ -433,7 +491,13 @@ Begin your analysis now!"""
 
 
 # Synchronous wrapper for Flask
-def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callback=None) -> dict:
+def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callback=None,
+                       refinement_prompt=None, original_run_id=None) -> dict:
     """Synchronous wrapper for Flask route."""
     agent = ExcelAnalysisAgent(output_dir)
-    return asyncio.run(agent.analyze_file(file_path, event_callback=event_callback))
+    return asyncio.run(agent.analyze_file(
+        file_path,
+        event_callback=event_callback,
+        refinement_prompt=refinement_prompt,
+        original_run_id=original_run_id
+    ))
