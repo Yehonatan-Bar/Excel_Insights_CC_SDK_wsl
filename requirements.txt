@@ -1,0 +1,7 @@
+flask==3.0.0
+claude-agent-sdk==0.1.0
+pandas==2.1.4
+openpyxl==3.1.2
+plotly==5.18.0
+kaleido==0.2.1
+python-dotenv==1.0.0

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Insights Dashboard - AI Powered</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-name {
+            margin-top: 15px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-message {
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .time-estimate {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .activity-panel {
+            display: none;
+            margin-top: 30px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-panel h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .activity-log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #d4d4d4;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            line-height: 1.6;
+        }
+
+        .log-time {
+            color: #858585;
+            margin-right: 8px;
+        }
+
+        .log-icon {
+            margin-right: 8px;
+        }
+
+        .log-thinking { color: #4ec9b0; }  /* Cyan for thinking */
+        .log-tool { color: #dcdcaa; }      /* Yellow for tools */
+        .log-result { color: #9cdcfe; }    /* Light blue for results */
+        .log-text { color: #ce9178; }      /* Orange for text */
+        .log-error { color: #f48771; }     /* Red for errors */
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .features {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .feature-icon {
+            margin-right: 10px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Excel Insights Dashboard</h1>
+        <p class="subtitle">AI-Powered Analysis with Claude Agent SDK</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p><strong>Drop your Excel file here</strong></p>
+            <p style="color: #999; font-size: 0.9em;">or click to browse</p>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+        </div>
+
+        <div class="file-name" id="fileName"></div>
+        <button class="btn" id="uploadBtn" disabled>Analyze with AI</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p class="progress-message" id="progressMessage">Claude Agent is analyzing your data...</p>
+            <p class="time-estimate">⏰ Deep analysis in progress (3-5 minutes expected)</p>
+            <p class="time-estimate" id="elapsedTime">Elapsed: 0s</p>
+        </div>
+
+        <div class="activity-panel" id="activityPanel">
+            <h3>🤖 Agent Activity Monitor</h3>
+            <div class="activity-log" id="activityLog">
+                <!-- Events will be appended here -->
+            </div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">🤖</span>
+                <span>Claude Sonnet 4.5 AI Analysis</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">📈</span>
+                <span>Automatic Visualizations</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">💡</span>
+                <span>Smart Insights & Patterns</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🎨</span>
+                <span>Interactive Dashboard</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+
+        let selectedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                fileName.textContent = `Selected: ${selectedFile.name}`;
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            selectedFile = e.dataTransfer.files[0];
+            if (selectedFile) {
+                fileName.textContent = `Selected: ${selectedFile.name}`;
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Helper function to append log entry
+        function appendLogEntry(event) {
+            const logDiv = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${event.type}`;
+            entry.innerHTML = `
+                <span class="log-time">[${event.timestamp}]</span>
+                <span class="log-icon">${event.icon}</span>
+                <span class="log-content">${escapeHtml(event.content)}</span>
+            `;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // Poll for analysis status
+        let lastEventCount = 0;
+
+        async function pollStatus(runId, startTime) {
+            const progressMessage = document.getElementById('progressMessage');
+            const elapsedTime = document.getElementById('elapsedTime');
+            const activityPanel = document.getElementById('activityPanel');
+
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${runId}`);
+                    const status = await response.json();
+
+                    // Update elapsed time
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    elapsedTime.textContent = `Elapsed: ${elapsed}s`;
+
+                    // Update message
+                    progressMessage.textContent = status.message || 'Processing...';
+
+                    // Show activity panel and append new events
+                    console.log('DEBUG: Status response:', status);
+                    console.log('DEBUG: Events:', status.events);
+                    console.log('DEBUG: Event count:', status.event_count);
+                    console.log('DEBUG: Last event count:', lastEventCount);
+
+                    if (status.events && status.events.length > 0) {
+                        activityPanel.style.display = 'block';
+
+                        // Append only new events (events beyond lastEventCount)
+                        const currentEventCount = status.event_count || 0;
+                        if (currentEventCount > lastEventCount) {
+                            // Get new events by looking at the difference
+                            const eventsToShow = status.events.slice(-(currentEventCount - lastEventCount));
+                            console.log('DEBUG: Events to show:', eventsToShow);
+                            eventsToShow.forEach(event => {
+                                appendLogEntry(event);
+                            });
+                            lastEventCount = currentEventCount;
+                        }
+                    } else {
+                        console.log('DEBUG: No events available yet');
+                    }
+
+                    if (status.ready && status.dashboard_url) {
+                        clearInterval(interval);
+                        window.location.href = status.dashboard_url;
+                    } else if (status.status === 'error') {
+                        clearInterval(interval);
+                        errorDiv.textContent = status.error || 'Analysis failed';
+                        errorDiv.style.display = 'block';
+                        loading.style.display = 'none';
+                        uploadBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Status poll error:', error);
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+
+        // Upload and analyze
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            uploadBtn.disabled = true;
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            // Reset event tracking
+            lastEventCount = 0;
+            const activityLog = document.getElementById('activityLog');
+            activityLog.innerHTML = ''; // Clear previous events
+            const activityPanel = document.getElementById('activityPanel');
+            activityPanel.style.display = 'none';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Start polling for status
+                    pollStatus(result.run_id, Date.now());
+                } else {
+                    errorDiv.textContent = result.error || 'Upload failed';
+                    errorDiv.style.display = 'block';
+                    uploadBtn.disabled = false;
+                    loading.style.display = 'none';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error: ' + error.message;
+                errorDiv.style.display = 'block';
+                uploadBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
