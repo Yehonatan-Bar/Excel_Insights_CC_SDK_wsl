@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Insights Dashboard - AI Powered</title>
+    <title>לוח בקרה לתובנות אקסל - מופעל בבינה מלאכותית</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -160,7 +160,7 @@
             border-bottom: 1px solid #2d2d2d;
             line-height: 1.6;
             transition: background 0.2s;
-            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
         }
 
         .log-entry:hover {
@@ -168,20 +168,20 @@
         }
 
         /* Color-coded borders */
-        .log-entry.log-thinking { border-left-color: #4ec9b0; }
-        .log-entry.log-text { border-left-color: #ce9178; }
-        .log-entry.log-tool { border-left-color: #dcdcaa; }
-        .log-entry.log-result { border-left-color: #9cdcfe; }
-        .log-entry.log-error { border-left-color: #f48771; }
+        .log-entry.log-thinking { border-right-color: #4ec9b0; }
+        .log-entry.log-text { border-right-color: #ce9178; }
+        .log-entry.log-tool { border-right-color: #dcdcaa; }
+        .log-entry.log-result { border-right-color: #9cdcfe; }
+        .log-entry.log-error { border-right-color: #f48771; }
 
         .log-time {
             color: #858585;
-            margin-right: 8px;
+            margin-left: 8px;
             font-size: 0.9em;
         }
 
         .log-icon {
-            margin-right: 8px;
+            margin-left: 8px;
             font-size: 1.1em;
         }
 
@@ -201,7 +201,7 @@
             color: #569cd6;
             cursor: pointer;
             text-decoration: underline;
-            margin-left: 8px;
+            margin-right: 8px;
             font-size: 0.9em;
         }
 
@@ -215,7 +215,7 @@
             padding: 10px;
             background: #252525;
             border-radius: 5px;
-            border-left: 3px solid #569cd6;
+            border-right: 3px solid #569cd6;
             white-space: pre-wrap;
             word-wrap: break-word;
             max-height: 300px;
@@ -251,40 +251,40 @@
         }
 
         .feature-icon {
-            margin-right: 10px;
+            margin-left: 10px;
             color: #667eea;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Excel Insights Dashboard</h1>
-        <p class="subtitle">AI-Powered Analysis with Claude Agent SDK</p>
+        <h1>📊 לוח בקרה לתובנות אקסל</h1>
+        <p class="subtitle">ניתוח מופעל בינה מלאכותית עם Claude Agent SDK</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
-            <p><strong>Drop your Excel file here</strong></p>
-            <p style="color: #999; font-size: 0.9em;">or click to browse</p>
+            <p><strong>גרור את קובץ האקסל שלך לכאן</strong></p>
+            <p style="color: #999; font-size: 0.9em;">או לחץ לעיון</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
         </div>
 
         <div class="file-name" id="fileName"></div>
-        <button class="btn" id="uploadBtn" disabled>Analyze with AI</button>
+        <button class="btn" id="uploadBtn" disabled>נתח עם בינה מלאכותית</button>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p class="progress-message" id="progressMessage">Claude Agent is analyzing your data...</p>
-            <p class="time-estimate">⏰ Deep analysis in progress (3-5 minutes expected)</p>
-            <p class="time-estimate" id="elapsedTime">Elapsed: 0s</p>
+            <p class="progress-message" id="progressMessage">סוכן Claude מנתח את הנתונים שלך...</p>
+            <p class="time-estimate">⏰ ניתוח מעמיק בתהליך (צפוי 3-5 דקות)</p>
+            <p class="time-estimate" id="elapsedTime">זמן שחלף: 0 שניות</p>
         </div>
 
         <div class="activity-panel" id="activityPanel">
             <h3>
-                <span>🧠 Agent Thinking & Working</span>
-                <span style="font-size: 0.8em; color: #858585; margin-left: auto;">Live Stream</span>
+                <span>🧠 הסוכן חושב ועובד</span>
+                <span style="font-size: 0.8em; color: #858585; margin-right: auto;">שידור חי</span>
             </h3>
             <div class="activity-log" id="activityLog">
-                <!-- Events will be streamed here in real-time -->
+                <!-- אירועים יוזרמו לכאן בזמן אמת -->
             </div>
         </div>
 
@@ -293,19 +293,19 @@
         <div class="features">
             <div class="feature">
                 <span class="feature-icon">🤖</span>
-                <span>Claude Sonnet 4.5 AI Analysis</span>
+                <span>ניתוח בינה מלאכותית Claude Sonnet 4.5</span>
             </div>
             <div class="feature">
                 <span class="feature-icon">📈</span>
-                <span>Automatic Visualizations</span>
+                <span>תצוגות חזותיות אוטומטיות</span>
             </div>
             <div class="feature">
                 <span class="feature-icon">💡</span>
-                <span>Smart Insights & Patterns</span>
+                <span>תובנות ודפוסים חכמים</span>
             </div>
             <div class="feature">
                 <span class="feature-icon">🎨</span>
-                <span>Interactive Dashboard</span>
+                <span>לוח בקרה אינטראקטיבי</span>
             </div>
         </div>
     </div>
@@ -327,7 +327,7 @@
         fileInput.addEventListener('change', (e) => {
             selectedFile = e.target.files[0];
             if (selectedFile) {
-                fileName.textContent = `Selected: ${selectedFile.name}`;
+                fileName.textContent = `נבחר: ${selectedFile.name}`;
                 uploadBtn.disabled = false;
             }
         });
@@ -347,7 +347,7 @@
             uploadArea.classList.remove('dragover');
             selectedFile = e.dataTransfer.files[0];
             if (selectedFile) {
-                fileName.textContent = `Selected: ${selectedFile.name}`;
+                fileName.textContent = `נבחר: ${selectedFile.name}`;
                 uploadBtn.disabled = false;
             }
         });
@@ -377,7 +377,7 @@
 
             // Add expand toggle if content is expandable
             if (event.expandable && event.full_content) {
-                html += `<span class="expand-toggle" onclick="toggleExpand('${entryId}')">[expand]</span>`;
+                html += `<span class="expand-toggle" onclick="toggleExpand('${entryId}')">[הרחב]</span>`;
                 html += `<div class="full-content" id="${entryId}">${escapeHtml(event.full_content)}</div>`;
             }
 
@@ -393,10 +393,10 @@
 
             if (fullContent.classList.contains('expanded')) {
                 fullContent.classList.remove('expanded');
-                toggleBtn.textContent = '[expand]';
+                toggleBtn.textContent = '[הרחב]';
             } else {
                 fullContent.classList.add('expanded');
-                toggleBtn.textContent = '[collapse]';
+                toggleBtn.textContent = '[כווץ]';
             }
         }
 
@@ -415,10 +415,10 @@
 
                     // Update elapsed time
                     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                    elapsedTime.textContent = `Elapsed: ${elapsed}s`;
+                    elapsedTime.textContent = `זמן שחלף: ${elapsed} שניות`;
 
                     // Update message
-                    progressMessage.textContent = status.message || 'Processing...';
+                    progressMessage.textContent = status.message || 'מעבד...';
 
                     // Show activity panel and append new events
                     console.log('DEBUG: Status response:', status);
@@ -449,7 +449,7 @@
                         window.location.href = status.dashboard_url;
                     } else if (status.status === 'error') {
                         clearInterval(interval);
-                        errorDiv.textContent = status.error || 'Analysis failed';
+                        errorDiv.textContent = status.error || 'הניתוח נכשל';
                         errorDiv.style.display = 'block';
                         loading.style.display = 'none';
                         uploadBtn.disabled = false;
@@ -490,13 +490,13 @@
                     // Start polling for status
                     pollStatus(result.run_id, Date.now());
                 } else {
-                    errorDiv.textContent = result.error || 'Upload failed';
+                    errorDiv.textContent = result.error || 'ההעלאה נכשלה';
                     errorDiv.style.display = 'block';
                     uploadBtn.disabled = false;
                     loading.style.display = 'none';
                 }
             } catch (error) {
-                errorDiv.textContent = 'Error: ' + error.message;
+                errorDiv.textContent = 'שגיאה: ' + error.message;
                 errorDiv.style.display = 'block';
                 uploadBtn.disabled = false;
                 loading.style.display = 'none';

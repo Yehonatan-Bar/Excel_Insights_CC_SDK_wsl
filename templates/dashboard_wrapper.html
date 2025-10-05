@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Analysis Dashboard</title>
+    <title>לוח בקרה לניתוח אקסל</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, Arial;
             background: #f5f5f5;
         }
 
@@ -167,27 +167,27 @@
             border-bottom: 1px solid #2d2d2d;
             line-height: 1.6;
             transition: background 0.2s;
-            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
         }
 
         .log-entry:hover {
             background: #252525;
         }
 
-        .log-entry.log-thinking { border-left-color: #4ec9b0; }
-        .log-entry.log-text { border-left-color: #ce9178; }
-        .log-entry.log-tool { border-left-color: #dcdcaa; }
-        .log-entry.log-result { border-left-color: #9cdcfe; }
-        .log-entry.log-error { border-left-color: #f48771; }
+        .log-entry.log-thinking { border-right-color: #4ec9b0; }
+        .log-entry.log-text { border-right-color: #ce9178; }
+        .log-entry.log-tool { border-right-color: #dcdcaa; }
+        .log-entry.log-result { border-right-color: #9cdcfe; }
+        .log-entry.log-error { border-right-color: #f48771; }
 
         .log-time {
             color: #858585;
-            margin-right: 8px;
+            margin-left: 8px;
             font-size: 0.9em;
         }
 
         .log-icon {
-            margin-right: 8px;
+            margin-left: 8px;
             font-size: 1.1em;
         }
 
@@ -205,7 +205,7 @@
             color: #569cd6;
             cursor: pointer;
             text-decoration: underline;
-            margin-left: 8px;
+            margin-right: 8px;
             font-size: 0.9em;
         }
 
@@ -219,7 +219,7 @@
             padding: 10px;
             background: #252525;
             border-radius: 5px;
-            border-left: 3px solid #569cd6;
+            border-right: 3px solid #569cd6;
             white-space: pre-wrap;
             word-wrap: break-word;
             max-height: 300px;
@@ -238,36 +238,36 @@
 
     <div class="refinement-panel">
         <div class="refinement-content">
-            <h3 class="refinement-title">💡 Refine Your Analysis</h3>
+            <h3 class="refinement-title">💡 שכלל את הניתוח שלך</h3>
             <form class="refinement-form" id="refinementForm">
                 <textarea
                     class="refinement-input"
                     id="refinementInput"
-                    placeholder="Request improvements, point out errors, or ask for specific insights...&#10;&#10;Examples:&#10;• Add a comparison between Region A and Region B&#10;• The correlation heatmap is missing - please add it&#10;• Analyze the trend for the last 6 months only&#10;• Add box plots to show outliers in sales data"
+                    placeholder="בקש שיפורים, ציין שגיאות, או בקש תובנות ספציפיות...&#10;&#10;דוגמאות:&#10;• הוסף השוואה בין אזור א' לאזור ב'&#10;• מפת המתאם חסרה - אנא הוסף אותה&#10;• נתח את המגמה ל-6 החודשים האחרונים בלבד&#10;• הוסף תרשימי קופסה להצגת חריגים בנתוני המכירות"
                     rows="3"
                 ></textarea>
                 <button type="submit" class="refinement-btn" id="refinementBtn">
-                    🔄 Refine Analysis
+                    🔄 שכלל ניתוח
                 </button>
             </form>
             <div class="refinement-examples">
-                <strong>Tip:</strong> Be specific! The agent will re-analyze with your feedback in mind.
+                <strong>טיפ:</strong> היה ספציפי! הסוכן ינתח מחדש עם המשוב שלך בחשבון.
             </div>
         </div>
     </div>
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <div class="loading-text">Refining your analysis...</div>
-        <div class="loading-subtext" id="loadingTime">Elapsed: 0s</div>
+        <div class="loading-text">משכלל את הניתוח שלך...</div>
+        <div class="loading-subtext" id="loadingTime">זמן שחלף: 0 שניות</div>
 
         <div class="activity-panel" id="activityPanel" style="display: block; max-width: 800px; margin-top: 30px;">
             <h4>
-                <span>🧠 Agent Thinking & Working</span>
-                <span style="font-size: 0.8em; color: #858585; margin-left: auto;">Live Stream</span>
+                <span>🧠 הסוכן חושב ועובד</span>
+                <span style="font-size: 0.8em; color: #858585; margin-right: auto;">שידור חי</span>
             </h4>
             <div class="activity-log" id="activityLog">
-                <!-- Events will be streamed here in real-time -->
+                <!-- אירועים יוזרמו לכאן בזמן אמת -->
             </div>
         </div>
     </div>
@@ -334,7 +334,7 @@
 
             const userPrompt = input.value.trim();
             if (!userPrompt) {
-                alert('Please enter your refinement request');
+                alert('אנא הזן את בקשת השכלול שלך');
                 return;
             }
 
@@ -346,7 +346,7 @@
             const startTime = Date.now();
             const timeInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                loadingTime.textContent = `Elapsed: ${elapsed}s`;
+                loadingTime.textContent = `זמן שחלף: ${elapsed} שניות`;
             }, 1000);
 
             try {
@@ -395,20 +395,20 @@
                             clearInterval(pollInterval);
                             clearInterval(timeInterval);
                             loadingOverlay.classList.remove('active');
-                            alert('Error during refinement: ' + (status.error || 'Unknown error'));
+                            alert('שגיאה במהלך השכלול: ' + (status.error || 'שגיאה לא ידועה'));
                             btn.disabled = false;
                         }
                     }, 2000);
                 } else {
                     clearInterval(timeInterval);
                     loadingOverlay.classList.remove('active');
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    alert('שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
                     btn.disabled = false;
                 }
             } catch (error) {
                 clearInterval(timeInterval);
                 loadingOverlay.classList.remove('active');
-                alert('Error submitting refinement: ' + error.message);
+                alert('שגיאה בשליחת השכלול: ' + error.message);
                 btn.disabled = false;
             }
         });
