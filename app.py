@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import authentication and database modules
-from auth import AuthManager, login_required, admin_required
+from auth import AuthManager, login_required, admin_required, registered_user_required, create_guest_session, is_guest_user, is_authenticated_user
 from database import db, User, Analysis, ActivityLog
 
 # Validate API key is set
@@ -132,10 +132,27 @@ def login():
     return render_template('login.html')
 
 
+@app.route('/guest-login')
+def guest_login():
+    """Create guest session and redirect to home."""
+    guest_data = create_guest_session()
+    session['user'] = guest_data
+    session.permanent = True
+
+    # Don't create database user for guests, just set a flag
+    session['user_id'] = None  # No database tracking for guests
+    session['is_guest'] = True
+
+    flash(f'ברוך הבא, {guest_data["full_name"]}! אתה משתמש במצב אורח.', 'success')
+    return redirect(url_for('index'))
+
+
 @app.route('/logout')
 def logout():
     """Logout handler."""
-    if 'user_id' in session:
+    is_guest = session.get('is_guest', False)
+
+    if not is_guest and 'user_id' in session:
         try:
             ActivityLog.log_event(
                 user_id=session['user_id'],
@@ -147,7 +164,12 @@ def logout():
             print(f"Error logging logout: {e}")
 
     session.clear()
-    flash('התנתקת בהצלחה', 'success')
+
+    if is_guest:
+        flash('יצאת ממצב אורח', 'success')
+    else:
+        flash('התנתקת בהצלחה', 'success')
+
     return redirect(url_for('login'))
 
 
@@ -223,25 +245,28 @@ def upload_file():
         # Generate run_id
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Create analysis record in database
+        # Create analysis record in database (skip for guests)
         user_id = session.get('user_id')
-        try:
-            db_analysis = Analysis.create(
-                user_id=user_id,
-                filename=filename,
-                run_id=run_id
-            )
+        is_guest = session.get('is_guest', False)
 
-            # Log upload activity
-            ActivityLog.log_event(
-                user_id=user_id,
-                analysis_id=db_analysis['id'],
-                event_type='upload',
-                event_data={'filename': filename, 'filesize': os.path.getsize(filepath)}
-            )
+        if not is_guest and user_id:
+            try:
+                db_analysis = Analysis.create(
+                    user_id=user_id,
+                    filename=filename,
+                    run_id=run_id
+                )
 
-        except Exception as e:
-            print(f"Database error during upload: {e}")
+                # Log upload activity
+                ActivityLog.log_event(
+                    user_id=user_id,
+                    analysis_id=db_analysis['id'],
+                    event_type='upload',
+                    event_data={'filename': filename, 'filesize': os.path.getsize(filepath)}
+                )
+
+            except Exception as e:
+                print(f"Database error during upload: {e}")
 
         # Initialize job tracking
         analysis_jobs[run_id] = {
@@ -277,19 +302,22 @@ def view_dashboard(run_id):
     dashboard_path = Path(app.config['OUTPUT_FOLDER']) / run_id / "dashboard.html"
 
     if dashboard_path.exists():
-        # Log dashboard view
+        # Log dashboard view (skip for guests)
         user_id = session.get('user_id')
-        try:
-            db_analysis = Analysis.get_by_run_id(run_id)
-            if db_analysis:
-                ActivityLog.log_event(
-                    user_id=user_id,
-                    analysis_id=db_analysis['id'],
-                    event_type='view_dashboard',
-                    event_data={'run_id': run_id}
-                )
-        except Exception as e:
-            print(f"Error logging dashboard view: {e}")
+        is_guest = session.get('is_guest', False)
+
+        if not is_guest and user_id:
+            try:
+                db_analysis = Analysis.get_by_run_id(run_id)
+                if db_analysis:
+                    ActivityLog.log_event(
+                        user_id=user_id,
+                        analysis_id=db_analysis['id'],
+                        event_type='view_dashboard',
+                        event_data={'run_id': run_id}
+                    )
+            except Exception as e:
+                print(f"Error logging dashboard view: {e}")
 
         # Return wrapper template with refinement form
         return render_template('dashboard_wrapper.html', run_id=run_id, user=session.get('user'))
@@ -347,30 +375,33 @@ def refine_analysis(run_id):
     # Generate new run_id for refinement
     new_run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # Create refinement analysis record
+    # Create refinement analysis record (skip for guests)
     user_id = session.get('user_id')
-    try:
-        db_analysis = Analysis.create(
-            user_id=user_id,
-            filename=original_filename,
-            run_id=new_run_id
-        )
+    is_guest = session.get('is_guest', False)
 
-        # Log refinement activity
-        original_analysis = Analysis.get_by_run_id(run_id)
-        ActivityLog.log_event(
-            user_id=user_id,
-            analysis_id=db_analysis['id'],
-            event_type='refine',
-            event_data={
-                'refinement_prompt': refinement_prompt,
-                'original_run_id': run_id,
-                'original_analysis_id': original_analysis['id'] if original_analysis else None
-            }
-        )
+    if not is_guest and user_id:
+        try:
+            db_analysis = Analysis.create(
+                user_id=user_id,
+                filename=original_filename,
+                run_id=new_run_id
+            )
 
-    except Exception as e:
-        print(f"Database error during refinement: {e}")
+            # Log refinement activity
+            original_analysis = Analysis.get_by_run_id(run_id)
+            ActivityLog.log_event(
+                user_id=user_id,
+                analysis_id=db_analysis['id'],
+                event_type='refine',
+                event_data={
+                    'refinement_prompt': refinement_prompt,
+                    'original_run_id': run_id,
+                    'original_analysis_id': original_analysis['id'] if original_analysis else None
+                }
+            )
+
+        except Exception as e:
+            print(f"Database error during refinement: {e}")
 
     # Initialize job tracking
     analysis_jobs[new_run_id] = {
@@ -409,14 +440,16 @@ def check_status(run_id):
 
     job = analysis_jobs[run_id]
 
-    # Update database status
-    try:
-        if job['status'] == 'completed':
-            Analysis.update_status(run_id, 'completed', job.get('result'))
-        elif job['status'] == 'error':
-            Analysis.update_status(run_id, 'error', {'error': job.get('error')})
-    except Exception as e:
-        print(f"Error updating analysis status: {e}")
+    # Update database status (skip for guests)
+    is_guest = session.get('is_guest', False)
+    if not is_guest:
+        try:
+            if job['status'] == 'completed':
+                Analysis.update_status(run_id, 'completed', job.get('result'))
+            elif job['status'] == 'error':
+                Analysis.update_status(run_id, 'error', {'error': job.get('error')})
+        except Exception as e:
+            print(f"Error updating analysis status: {e}")
 
     response = {
         "status": job.get('status', 'unknown'),

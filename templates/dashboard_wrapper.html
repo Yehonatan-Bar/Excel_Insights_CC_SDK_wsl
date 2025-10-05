@@ -231,9 +231,39 @@
         .full-content.expanded {
             display: block;
         }
+
+        .guest-banner {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 0.9em;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .guest-banner strong {
+            font-weight: 600;
+        }
+
+        .guest-banner a {
+            color: white;
+            text-decoration: underline;
+            margin-right: 10px;
+        }
+
+        .guest-banner a:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
+    {% if user and user.is_guest %}
+    <div class="guest-banner">
+        <strong>👤 מצב אורח:</strong> הניתוח הזה יהיה זמין רק במהלך הפעלה זו.
+        <a href="/logout">התחבר או הירשם</a> לשמירת העבודה שלך לצמיתות.
+    </div>
+    {% endif %}
+
     <iframe id="dashboardFrame" class="dashboard-container" src="/dashboard-content/{{ run_id }}"></iframe>
 
     <div class="refinement-panel">

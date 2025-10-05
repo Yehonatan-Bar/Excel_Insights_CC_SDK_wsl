@@ -203,25 +203,69 @@ class AuthManager:
         return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 
+# Guest user utilities
+def create_guest_session():
+    """Create a guest session for anonymous users."""
+    import uuid
+    guest_id = str(uuid.uuid4())[:8]
+    return {
+        'username': f'guest_{guest_id}',
+        'full_name': 'אורח',
+        'role': 'guest',
+        'is_guest': True,
+        'guest_id': guest_id
+    }
+
+
+def is_guest_user():
+    """Check if current session is a guest user."""
+    return session.get('user', {}).get('is_guest', False)
+
+
+def is_authenticated_user():
+    """Check if current session is an authenticated (non-guest) user."""
+    return 'user' in session and not session['user'].get('is_guest', False)
+
+
 # Flask decorators for route protection
 def login_required(f):
-    """Decorator to require login for a route."""
+    """Decorator to require login OR guest access for a route."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            flash('אנא התחבר כדי לגשת לדף זה', 'warning')
+            flash('אנא התחבר או המשך כאורח', 'warning')
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
 
-def admin_required(f):
-    """Decorator to require admin role for a route."""
+def registered_user_required(f):
+    """Decorator to require registered user (no guests allowed)."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             flash('אנא התחבר כדי לגשת לדף זה', 'warning')
             return redirect(url_for('login', next=request.url))
+
+        if is_guest_user():
+            flash('תכונה זו זמינה רק למשתמשים רשומים. אנא התחבר או הירשם.', 'warning')
+            return redirect(url_for('login', next=request.url))
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_required(f):
+    """Decorator to require admin role for a route (guests not allowed)."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            flash('אנא התחבר כדי לגשת לדף זה', 'warning')
+            return redirect(url_for('login', next=request.url))
+
+        if is_guest_user():
+            flash('תכונה זו זמינה רק למשתמשים רשומים.', 'error')
+            return redirect(url_for('index'))
 
         if session['user'].get('role') != 'admin':
             flash('נדרשות הרשאות מנהל לגשת לדף זה', 'error')

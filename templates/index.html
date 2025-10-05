@@ -302,6 +302,48 @@
         .nav-btn-logout:hover {
             background: #d0d0d0;
         }
+
+        .guest-notice {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .guest-notice strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .guest-notice .register-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .guest-notice .register-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .guest-badge {
+            background: #ff9800;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -309,6 +351,9 @@
         {% if user %}
         <div class="user-nav">
             <div class="user-info">
+                {% if user.is_guest %}
+                    <span class="guest-badge">אורח</span>
+                {% endif %}
                 👤 {{ user.full_name }}
                 {% if user.role == 'admin' %}
                     <span style="color: #667eea; font-weight: 600;">(מנהל)</span>
@@ -321,6 +366,15 @@
                 <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-logout">🚪 התנתק</a>
             </div>
         </div>
+
+        {% if user.is_guest %}
+        <div class="guest-notice">
+            <strong>👤 אתה משתמש במצב אורח</strong>
+            הניתוחים שלך יישמרו במהלך הפעלה זו בלבד. התחבר למשתמש רשום כדי לשמור את העבודה שלך לצמיתות.
+            <br>
+            <a href="{{ url_for('logout') }}" class="register-link">📝 התחבר או הירשם</a>
+        </div>
+        {% endif %}
         {% endif %}
 
         <h1>📊 לוח בקרה לתובנות אקסל</h1>
