@@ -5,7 +5,7 @@
 Create a **fully self-contained** Windows package that:
 - ✅ Has all dependencies pre-installed (no internet needed!)
 - ✅ Includes your embedded API key
-- ✅ Works on any Windows PC with just Python installed
+- ✅ Works on any Windows PC with Python and Node.js installed
 - ✅ Can be copied to multiple PCs and run immediately
 
 ---
@@ -25,10 +25,13 @@ python3 build_windows.py
 - Then `venv` folder is created and package becomes portable
 
 **Workflow for end users:**
-1. Copy folder to Windows PC
-2. Run `SETUP_FIRST_TIME.bat` (needs internet, one-time)
-3. Run `START_HERE.bat` anytime (offline after setup)
-4. Can now copy entire folder (with venv) to other PCs!
+1. Install Python 3.10+ and Node.js 18+ on Windows PC
+2. Copy folder to Windows PC
+3. Run `SETUP_FIRST_TIME.bat` (needs internet, one-time)
+   - Installs Claude Code CLI (required for AI features)
+   - Creates venv with all Python dependencies
+4. Run `START_HERE.bat` anytime (offline after setup)
+5. Can now copy entire folder (with venv) to other PCs!
 
 ---
 
@@ -39,6 +42,7 @@ python3 build_windows.py
 **Requirements:**
 - Access to a Windows PC
 - Python 3.10+ installed on Windows
+- Node.js 18+ installed on Windows (required for Claude Agent SDK)
 
 **Steps:**
 
@@ -110,15 +114,30 @@ Excel_Insights_Windows/
 
 ## 🚀 Usage on Target Windows PC
 
+### Prerequisites (Install BEFORE running the package):
+1. **Python 3.10+**
+   - Download: https://www.python.org/downloads/
+   - ⚠️ CHECK "Add Python to PATH" during installation!
+
+2. **Node.js 18+ (REQUIRED)**
+   - Download: https://nodejs.org/
+   - Use the LTS (Long Term Support) version
+   - ⚠️ CHECK "Add to PATH" during installation!
+   - ⚠️ **WHY NEEDED**: Claude Agent SDK requires the Claude Code CLI, which runs on Node.js
+
 ### If Venv NOT Included:
-1. Copy folder to Windows PC
-2. Run `SETUP_FIRST_TIME.bat` (needs internet, 2-5 minutes)
-3. Run `START_HERE.bat` (no internet needed from now on)
+1. Install Python and Node.js (see prerequisites above)
+2. Copy folder to Windows PC
+3. Run `SETUP_FIRST_TIME.bat` (needs internet, 5-10 minutes)
+   - This will install Claude Code CLI and all dependencies
+4. Run `START_HERE.bat` (no internet needed from now on)
 
 ### If Venv IS Included:
-1. Copy folder to Windows PC
-2. Run `START_HERE.bat` immediately!
-3. That's it! ✅
+1. Install Python and Node.js (see prerequisites above)
+2. Copy folder to Windows PC
+3. Make sure Claude Code CLI is installed: `npm install -g @anthropics/claude-code`
+4. Run `START_HERE.bat` immediately!
+5. That's it! ✅
 
 ---
 
@@ -188,6 +207,51 @@ Copy-Item -Path $wslPath -Destination "C:\Temp\Excel_Insights_Windows" -Recurse
 
 ---
 
+## 🔧 Troubleshooting Common Issues
+
+### Error: "Control request timeout: initialize"
+
+**Cause:** Claude Agent SDK cannot connect to the Claude Code CLI.
+
+**Solutions:**
+
+1. **Check Node.js is installed:**
+   ```cmd
+   node --version
+   ```
+   Should show v18.0.0 or higher. If not, install from https://nodejs.org/
+
+2. **Install Claude Code CLI:**
+   ```cmd
+   npm install -g @anthropics/claude-code
+   ```
+
+3. **Verify CLI installation:**
+   ```cmd
+   claude-code --version
+   ```
+
+4. **If still failing:**
+   - Delete the `venv` folder
+   - Run `SETUP_FIRST_TIME.bat` again
+   - Make sure Node.js and npm are in your PATH
+
+5. **Alternative: Install CLI locally (if global install fails):**
+   ```cmd
+   cd Excel_Insights_Windows
+   npm install @anthropics/claude-code
+   ```
+
+### Error: "Node.js not found"
+
+Install Node.js from https://nodejs.org/ and make sure "Add to PATH" is checked during installation.
+
+### Error: "Python not found"
+
+Install Python from https://www.python.org/downloads/ and make sure "Add Python to PATH" is checked during installation.
+
+---
+
 ## ✅ Verification Checklist
 
 Before distributing, verify:
@@ -199,12 +263,15 @@ Before distributing, verify:
 - [ ] If including venv: `venv/Lib/site-packages/` contains Flask, pandas, etc.
 
 Test on a clean Windows PC:
+- [ ] Python 3.10+ installed
+- [ ] Node.js 18+ installed
 - [ ] Extract package
 - [ ] Run `SETUP_FIRST_TIME.bat` (if no venv)
+- [ ] Verify Claude Code CLI is installed: `claude-code --version`
 - [ ] Run `START_HERE.bat`
 - [ ] Open http://localhost:5000
 - [ ] Upload test Excel file
-- [ ] Verify analysis works
+- [ ] Verify analysis works (watch for "Control request timeout" error)
 
 ---
 

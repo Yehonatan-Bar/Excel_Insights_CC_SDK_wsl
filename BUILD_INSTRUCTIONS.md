@@ -60,19 +60,28 @@ Excel_Insights_Windows/
 ### Requirements on Target Windows PC:
 - **Python 3.10+** (from https://www.python.org/downloads/)
   - ⚠️ **IMPORTANT**: Check "Add Python to PATH" during installation!
+- **Node.js 18+** (from https://nodejs.org/)
+  - ⚠️ **REQUIRED**: Use LTS version and check "Add to PATH" during installation!
+  - ⚠️ **WHY**: Claude Agent SDK requires Node.js and Claude Code CLI to function
 - Internet connection (for first-run dependency installation)
 
 ### Setup Steps:
 
 1. **Copy** the entire `Excel_Insights_Windows` folder to Windows PC
 
-2. **Double-click** `START_HERE.bat`
-   - First run: Installs dependencies (~2 minutes)
-   - Subsequent runs: Starts immediately
+2. **Double-click** `SETUP_FIRST_TIME.bat`
+   - Checks Python and Node.js installations
+   - Installs Claude Code CLI (required for AI features)
+   - Creates virtual environment with all dependencies
+   - Takes 5-10 minutes (needs internet connection)
+   - You only need to do this ONCE!
 
-3. **Open browser** to http://localhost:5000
+3. **Double-click** `START_HERE.bat` to launch the app
+   - Subsequent runs: Starts immediately (no internet needed)
 
-4. **Upload Excel file** and watch AI work!
+4. **Open browser** to http://localhost:5000
+
+5. **Upload Excel file** and watch AI work!
 
 ## 🔧 Alternative Launchers
 
@@ -139,10 +148,11 @@ Edit `build_windows.py` to:
 ✅ Embedded API key
 ✅ Auto-setup scripts
 
-### What's NOT Included (installed on first run):
-❌ Python dependencies (Flask, pandas, plotly, etc.)
+### What's NOT Included (must be pre-installed or installed on first run):
 ❌ Python runtime (must be pre-installed on Windows)
-❌ Node.js / Claude Code CLI (SDK will install if needed)
+❌ Node.js runtime (must be pre-installed on Windows)
+❌ Python dependencies (Flask, pandas, plotly, etc.) - installed by SETUP_FIRST_TIME.bat
+❌ Claude Code CLI - installed by SETUP_FIRST_TIME.bat
 
 This keeps the package small and portable while ensuring compatibility with different Windows environments.
 
@@ -150,11 +160,14 @@ This keeps the package small and portable while ensuring compatibility with diff
 
 Test the package on a clean Windows VM or PC:
 
-1. Copy `Excel_Insights_Windows` folder to test PC
-2. Make sure Python 3.10+ is installed (with PATH)
-3. Double-click `START_HERE.bat`
-4. Verify it installs dependencies and starts server
-5. Test uploading an Excel file
+1. Make sure Python 3.10+ is installed (with PATH)
+2. Make sure Node.js 18+ is installed (with PATH)
+3. Copy `Excel_Insights_Windows` folder to test PC
+4. Double-click `SETUP_FIRST_TIME.bat`
+5. Verify it checks Python/Node.js, installs Claude Code CLI, and creates venv
+6. Double-click `START_HERE.bat`
+7. Verify server starts without errors
+8. Test uploading an Excel file and watch for "Control request timeout" error
 
 ## 📝 Troubleshooting
 
@@ -172,12 +185,29 @@ python --version
 
 Should show: `Python 3.10.x` or higher
 
+### Package won't run: "Node.js not found"
+Make sure Node.js is installed and in PATH:
+```cmd
+node --version
+```
+
+Should show: `v18.0.0` or higher
+
+### Analysis fails: "Control request timeout: initialize"
+This means the Claude Agent SDK cannot connect to the Claude Code CLI.
+
+**Solution:**
+1. Make sure Node.js is installed: `node --version`
+2. Install Claude Code CLI: `npm install -g @anthropics/claude-code`
+3. Verify: `claude-code --version`
+4. Delete `venv` folder and run `SETUP_FIRST_TIME.bat` again
+
 ### Dependencies fail to install on Windows
-Delete `venv` folder and run `START_HERE.bat` again
+Delete `venv` folder and run `SETUP_FIRST_TIME.bat` again
 
 ## 🎉 Success!
 
-Once built, you have a **portable, ready-to-use** Excel Insights Dashboard that works on any Windows PC with Python installed!
+Once built, you have a **portable, ready-to-use** Excel Insights Dashboard that works on any Windows PC with Python and Node.js installed!
 
 ---
 
