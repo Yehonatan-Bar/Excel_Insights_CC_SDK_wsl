@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פאנל ניהול - לוח בקרה לתובנות אקסל</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,255,255,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section-header h2 {
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .users-table th,
+        .users-table td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .users-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .users-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .role-admin {
+            background: #667eea;
+            color: white;
+        }
+
+        .role-user {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #45a049;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #da190b;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            right: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #667eea;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: Arial, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-cancel {
+            background: #ccc;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #bbb;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+        }
+
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 פאנל ניהול מערכת</h1>
+            <div class="header-info">
+                <div>
+                    <p>משתמש מחובר: <strong>{{ user.full_name }}</strong> ({{ user.role }})</p>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">🏠 חזרה לדף הבית</a>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary">🚪 התנתק</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-success" id="alertSuccess"></div>
+        <div class="alert alert-error" id="alertError"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>{{ users|length }}</h3>
+                <p>משתמשים במערכת</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</h3>
+                <p>מנהלים</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ users|sum(attribute='analyses_count') }}</h3>
+                <p>סה"כ ניתוחים</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>👥 ניהול משתמשים</h2>
+                <button class="btn btn-primary" onclick="showAddUserModal()">+ הוסף משתמש חדש</button>
+            </div>
+
+            {% if users %}
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>שם משתמש</th>
+                        <th>שם מלא</th>
+                        <th>תפקיד</th>
+                        <th>התחברות אחרונה</th>
+                        <th>ניתוחים</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td><strong>{{ u.username }}</strong></td>
+                        <td>{{ u.full_name }}</td>
+                        <td>
+                            <span class="role-badge {{ 'role-admin' if u.role == 'admin' else 'role-user' }}">
+                                {{ 'מנהל' if u.role == 'admin' else 'משתמש' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if u.last_login %}
+                                {{ u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else 'מעולם לא התחבר' }}
+                            {% else %}
+                                <span style="color: #999;">מעולם לא התחבר</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.analyses_count }}</td>
+                        <td>
+                            <button class="btn btn-small btn-edit"
+                                    onclick="showEditUserModal('{{ u.username }}', '{{ u.full_name }}', '{{ u.role }}')">
+                                ✏️ ערוך
+                            </button>
+                            {% if u.username != user.username %}
+                            <button class="btn btn-small btn-delete"
+                                    onclick="deleteUser('{{ u.username }}')">
+                                🗑️ מחק
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">👥</div>
+                <p>אין משתמשים במערכת</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal" id="addUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>➕ הוסף משתמש חדש</h3>
+            </div>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="addUsername">שם משתמש</label>
+                    <input type="text" id="addUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="addFullName">שם מלא</label>
+                    <input type="text" id="addFullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="addPassword">סיסמה</label>
+                    <input type="password" id="addPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="addRole">תפקיד</label>
+                    <select id="addRole">
+                        <option value="user">משתמש</option>
+                        <option value="admin">מנהל</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeAddUserModal()">ביטול</button>
+                    <button type="submit" class="btn btn-primary">הוסף משתמש</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal" id="editUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✏️ ערוך משתמש</h3>
+            </div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUsername">
+                <div class="form-group">
+                    <label for="editFullName">שם מלא</label>
+                    <input type="text" id="editFullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">סיסמה חדשה (השאר ריק אם לא רוצה לשנות)</label>
+                    <input type="password" id="editPassword">
+                </div>
+                <div class="form-group">
+                    <label for="editRole">תפקיד</label>
+                    <select id="editRole">
+                        <option value="user">משתמש</option>
+                        <option value="admin">מנהל</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeEditUserModal()">ביטול</button>
+                    <button type="submit" class="btn btn-primary">שמור שינויים</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Show/hide modals
+        function showAddUserModal() {
+            document.getElementById('addUserModal').classList.add('active');
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.remove('active');
+            document.getElementById('addUserForm').reset();
+        }
+
+        function showEditUserModal(username, fullName, role) {
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editFullName').value = fullName;
+            document.getElementById('editRole').value = role;
+            document.getElementById('editUserModal').classList.add('active');
+        }
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.remove('active');
+            document.getElementById('editUserForm').reset();
+        }
+
+        // Alert functions
+        function showAlert(type, message) {
+            const alertEl = document.getElementById(type === 'success' ? 'alertSuccess' : 'alertError');
+            alertEl.textContent = message;
+            alertEl.classList.add('active');
+            setTimeout(() => {
+                alertEl.classList.remove('active');
+            }, 5000);
+        }
+
+        // Add user
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('addUsername').value;
+            const fullName = document.getElementById('addFullName').value;
+            const password = document.getElementById('addPassword').value;
+            const role = document.getElementById('addRole').value;
+
+            try {
+                const response = await fetch('/admin/add-user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, full_name: fullName, password, role })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', data.message);
+                    closeAddUserModal();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('error', data.error);
+                }
+            } catch (error) {
+                showAlert('error', 'שגיאה בהוספת משתמש: ' + error.message);
+            }
+        });
+
+        // Edit user
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('editUsername').value;
+            const fullName = document.getElementById('editFullName').value;
+            const password = document.getElementById('editPassword').value;
+            const role = document.getElementById('editRole').value;
+
+            const payload = { username, full_name: fullName, role };
+            if (password) {
+                payload.password = password;
+            }
+
+            try {
+                const response = await fetch('/admin/update-user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', data.message);
+                    closeEditUserModal();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('error', data.error);
+                }
+            } catch (error) {
+                showAlert('error', 'שגיאה בעדכון משתמש: ' + error.message);
+            }
+        });
+
+        // Delete user
+        async function deleteUser(username) {
+            if (!confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${username}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/delete-user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', data.message);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('error', data.error);
+                }
+            } catch (error) {
+                showAlert('error', 'שגיאה במחיקת משתמש: ' + error.message);
+            }
+        }
+
+        // Close modals on outside click
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

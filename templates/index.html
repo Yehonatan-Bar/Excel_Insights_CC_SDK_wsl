@@ -254,10 +254,75 @@
             margin-left: 10px;
             color: #667eea;
         }
+
+        .user-nav {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-btn-admin {
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-btn-admin:hover {
+            background: #5568d3;
+        }
+
+        .nav-btn-logout {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .nav-btn-logout:hover {
+            background: #d0d0d0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        {% if user %}
+        <div class="user-nav">
+            <div class="user-info">
+                👤 {{ user.full_name }}
+                {% if user.role == 'admin' %}
+                    <span style="color: #667eea; font-weight: 600;">(מנהל)</span>
+                {% endif %}
+            </div>
+            <div class="user-actions">
+                {% if user.role == 'admin' %}
+                <a href="{{ url_for('admin_panel') }}" class="nav-btn nav-btn-admin">🔧 פאנל ניהול</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-logout">🚪 התנתק</a>
+            </div>
+        </div>
+        {% endif %}
+
         <h1>📊 לוח בקרה לתובנות אקסל</h1>
         <p class="subtitle">ניתוח מופעל בינה מלאכותית עם Claude Agent SDK</p>
 
