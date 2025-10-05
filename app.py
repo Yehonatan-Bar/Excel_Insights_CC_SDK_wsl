@@ -16,6 +16,7 @@ load_dotenv()
 # Import authentication and database modules
 from auth import AuthManager, login_required, admin_required, registered_user_required, create_guest_session, is_guest_user, is_authenticated_user
 from database import db, User, Analysis, ActivityLog
+from email_service import email_service
 
 # Validate API key is set
 if not os.environ.get('ANTHROPIC_API_KEY'):
@@ -96,7 +97,8 @@ def login():
             try:
                 db_user = User.create_or_update(
                     username=user_data['username'],
-                    full_name=user_data['full_name']
+                    full_name=user_data['full_name'],
+                    email=user_data.get('email')
                 )
 
                 # Log login activity
@@ -219,10 +221,42 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
         analysis_jobs[run_id]['result'] = result
         analysis_jobs[run_id]['message'] = 'Analysis complete!' if not refinement_prompt else 'Refinement complete!'
 
+        # Send email notification if requested
+        if analysis_jobs[run_id].get('send_email') and analysis_jobs[run_id].get('user_email'):
+            try:
+                # Build full dashboard URL
+                base_url = request.url_root if request else 'http://localhost:5000/'
+                dashboard_url = f"{base_url}dashboard/{run_id}"
+
+                email_service.send_analysis_complete(
+                    to_email=analysis_jobs[run_id]['user_email'],
+                    user_name=analysis_jobs[run_id].get('user_full_name', 'User'),
+                    filename=analysis_jobs[run_id].get('filename', 'file.xlsx'),
+                    dashboard_url=dashboard_url,
+                    run_id=run_id
+                )
+                print(f"✉️ Email notification sent to {analysis_jobs[run_id]['user_email']}")
+            except Exception as email_error:
+                print(f"❌ Failed to send email notification: {email_error}")
+
     except Exception as e:
         analysis_jobs[run_id]['status'] = 'error'
         analysis_jobs[run_id]['error'] = str(e)
         analysis_jobs[run_id]['message'] = f'Error: {str(e)}'
+
+        # Send error notification email if requested
+        if analysis_jobs[run_id].get('send_email') and analysis_jobs[run_id].get('user_email'):
+            try:
+                email_service.send_analysis_error(
+                    to_email=analysis_jobs[run_id]['user_email'],
+                    user_name=analysis_jobs[run_id].get('user_full_name', 'User'),
+                    filename=analysis_jobs[run_id].get('filename', 'file.xlsx'),
+                    error_message=str(e),
+                    run_id=run_id
+                )
+                print(f"✉️ Error notification sent to {analysis_jobs[run_id]['user_email']}")
+            except Exception as email_error:
+                print(f"❌ Failed to send error notification: {email_error}")
 
 
 @app.route('/upload', methods=['POST'])
@@ -268,6 +302,11 @@ def upload_file():
             except Exception as e:
                 print(f"Database error during upload: {e}")
 
+        # Get email notification preference
+        send_email = request.form.get('send_email') == 'true'
+        user_email = session.get('user', {}).get('email')
+        user_full_name = session.get('user', {}).get('full_name', 'User')
+
         # Initialize job tracking
         analysis_jobs[run_id] = {
             'status': 'starting',
@@ -275,7 +314,10 @@ def upload_file():
             'filename': filename,
             'user_id': user_id,
             'events': [],  # Store activity log
-            'event_count': 0  # Track for efficient polling
+            'event_count': 0,  # Track for efficient polling
+            'send_email': send_email and user_email is not None,  # Only if user has email
+            'user_email': user_email,
+            'user_full_name': user_full_name
         }
 
         # Start analysis in background thread (NO TIMEOUT!)
@@ -498,6 +540,7 @@ def admin_panel():
                     users_with_stats.append({
                         'username': user['username'],
                         'full_name': user['full_name'],
+                        'email': user.get('email'),
                         'role': user['role'],
                         'last_login': db_user.get('last_login'),
                         'created_at': db_user.get('created_at'),
@@ -509,6 +552,7 @@ def admin_panel():
                     users_with_stats.append({
                         'username': user['username'],
                         'full_name': user['full_name'],
+                        'email': user.get('email'),
                         'role': user['role'],
                         'last_login': None,
                         'created_at': None,
@@ -520,6 +564,7 @@ def admin_panel():
                 users_with_stats.append({
                     'username': user['username'],
                     'full_name': user['full_name'],
+                    'email': user.get('email'),
                     'role': user['role'],
                     'last_login': None,
                     'created_at': None,
@@ -543,6 +588,7 @@ def admin_add_user():
     username = data.get('username', '').strip()
     password = data.get('password', '')
     full_name = data.get('full_name', '').strip()
+    email = data.get('email', '').strip()
     role = data.get('role', 'user')
 
     if not username or not password:
@@ -552,7 +598,7 @@ def admin_add_user():
         return jsonify({"success": False, "error": "תפקיד לא חוקי"}), 400
 
     try:
-        success = auth_manager.add_user(username, password, full_name, role)
+        success = auth_manager.add_user(username, password, full_name, email, role)
 
         if success:
             # Log activity
@@ -580,6 +626,7 @@ def admin_update_user():
     username = data.get('username', '').strip()
     password = data.get('password', '')
     full_name = data.get('full_name', '').strip()
+    email = data.get('email', '').strip() if data.get('email') else None
     role = data.get('role')
 
     if not username:
@@ -590,6 +637,7 @@ def admin_update_user():
             username=username,
             password=password if password else None,
             full_name=full_name if full_name else None,
+            email=email,
             role=role if role else None
         )
 

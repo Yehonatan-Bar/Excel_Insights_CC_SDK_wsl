@@ -349,6 +349,7 @@
                     <tr>
                         <th>שם משתמש</th>
                         <th>שם מלא</th>
+                        <th>אימייל</th>
                         <th>תפקיד</th>
                         <th>התחברות אחרונה</th>
                         <th>ניתוחים</th>
@@ -360,6 +361,13 @@
                     <tr>
                         <td><strong>{{ u.username }}</strong></td>
                         <td>{{ u.full_name }}</td>
+                        <td>
+                            {% if u.email %}
+                                {{ u.email }}
+                            {% else %}
+                                <span style="color: #999;">לא הוגדר</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="role-badge {{ 'role-admin' if u.role == 'admin' else 'role-user' }}">
                                 {{ 'מנהל' if u.role == 'admin' else 'משתמש' }}
@@ -375,7 +383,7 @@
                         <td>{{ u.analyses_count }}</td>
                         <td>
                             <button class="btn btn-small btn-edit"
-                                    onclick="showEditUserModal('{{ u.username }}', '{{ u.full_name }}', '{{ u.role }}')">
+                                    onclick="showEditUserModal('{{ u.username }}', '{{ u.full_name }}', '{{ u.email if u.email else '' }}', '{{ u.role }}')">
                                 ✏️ ערוך
                             </button>
                             {% if u.username != user.username %}
@@ -414,6 +422,10 @@
                     <input type="text" id="addFullName" required>
                 </div>
                 <div class="form-group">
+                    <label for="addEmail">אימייל (אופציונלי)</label>
+                    <input type="email" id="addEmail" placeholder="user@example.com">
+                </div>
+                <div class="form-group">
                     <label for="addPassword">סיסמה</label>
                     <input type="password" id="addPassword" required>
                 </div>
@@ -445,6 +457,10 @@
                     <input type="text" id="editFullName" required>
                 </div>
                 <div class="form-group">
+                    <label for="editEmail">אימייל (אופציונלי)</label>
+                    <input type="email" id="editEmail" placeholder="user@example.com">
+                </div>
+                <div class="form-group">
                     <label for="editPassword">סיסמה חדשה (השאר ריק אם לא רוצה לשנות)</label>
                     <input type="password" id="editPassword">
                 </div>
@@ -474,9 +490,10 @@
             document.getElementById('addUserForm').reset();
         }
 
-        function showEditUserModal(username, fullName, role) {
+        function showEditUserModal(username, fullName, email, role) {
             document.getElementById('editUsername').value = username;
             document.getElementById('editFullName').value = fullName;
+            document.getElementById('editEmail').value = email || '';
             document.getElementById('editRole').value = role;
             document.getElementById('editUserModal').classList.add('active');
         }
@@ -502,6 +519,7 @@
 
             const username = document.getElementById('addUsername').value;
             const fullName = document.getElementById('addFullName').value;
+            const email = document.getElementById('addEmail').value;
             const password = document.getElementById('addPassword').value;
             const role = document.getElementById('addRole').value;
 
@@ -509,7 +527,7 @@
                 const response = await fetch('/admin/add-user', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ username, full_name: fullName, password, role })
+                    body: JSON.stringify({ username, full_name: fullName, email, password, role })
                 });
 
                 const data = await response.json();
@@ -532,10 +550,11 @@
 
             const username = document.getElementById('editUsername').value;
             const fullName = document.getElementById('editFullName').value;
+            const email = document.getElementById('editEmail').value;
             const password = document.getElementById('editPassword').value;
             const role = document.getElementById('editRole').value;
 
-            const payload = { username, full_name: fullName, role };
+            const payload = { username, full_name: fullName, email, role };
             if (password) {
                 payload.password = password;
             }

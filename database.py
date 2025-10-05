@@ -69,21 +69,22 @@ class User:
             return cursor.fetchone()
 
     @staticmethod
-    def create_or_update(username, full_name=None):
+    def create_or_update(username, full_name=None, email=None):
         """Create or update user record (called after config file auth)."""
         with db.get_connection() as conn:
             cursor = db.get_cursor(conn)
             cursor.execute(
                 """
-                INSERT INTO users (username, full_name, last_login)
-                VALUES (%s, %s, %s)
+                INSERT INTO users (username, full_name, email, last_login)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (username)
                 DO UPDATE SET
                     last_login = EXCLUDED.last_login,
-                    full_name = COALESCE(EXCLUDED.full_name, users.full_name)
-                RETURNING id, username, full_name, created_at, last_login
+                    full_name = COALESCE(EXCLUDED.full_name, users.full_name),
+                    email = COALESCE(EXCLUDED.email, users.email)
+                RETURNING id, username, full_name, email, created_at, last_login
                 """,
-                (username, full_name, datetime.now())
+                (username, full_name, email, datetime.now())
             )
             return cursor.fetchone()
 
