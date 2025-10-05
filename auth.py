@@ -1,8 +1,8 @@
 """
 Authentication utilities for Excel Insights Dashboard
-Handles user authentication via users.yaml with bcrypt password hashing
+Handles user authentication via users.xml with bcrypt password hashing
 """
-import yaml
+import xml.etree.ElementTree as ET
 import bcrypt
 from functools import wraps
 from flask import session, redirect, url_for, flash, request
@@ -10,21 +10,33 @@ from pathlib import Path
 
 
 class AuthManager:
-    """Manage authentication using users.yaml configuration."""
+    """Manage authentication using users.xml configuration."""
 
-    def __init__(self, config_path='users.yaml'):
+    def __init__(self, config_path='users.xml'):
         self.config_path = Path(config_path)
         self.users = self._load_users()
 
     def _load_users(self):
-        """Load users from YAML configuration file."""
+        """Load users from XML configuration file."""
         if not self.config_path.exists():
             raise FileNotFoundError(f"Users configuration file not found: {self.config_path}")
 
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        tree = ET.parse(self.config_path)
+        root = tree.getroot()
 
-        return {user['username']: user for user in config.get('users', [])}
+        users = {}
+        for user_elem in root.findall('user'):
+            user = {
+                'username': user_elem.find('username').text,
+                'full_name': user_elem.find('full_name').text,
+                'email': user_elem.find('email').text if user_elem.find('email') is not None else None,
+                'password_hash': user_elem.find('password_hash').text,
+                'role': user_elem.find('role').text,
+                'email_notifications': user_elem.find('email_notifications').text.lower() == 'true' if user_elem.find('email_notifications') is not None else True
+            }
+            users[user['username']] = user
+
+        return users
 
     def reload_users(self):
         """Reload users from config file (useful after adding new users)."""
@@ -52,7 +64,9 @@ class AuthManager:
                 return {
                     'username': user['username'],
                     'full_name': user.get('full_name', username),
-                    'role': user.get('role', 'user')
+                    'email': user.get('email'),
+                    'role': user.get('role', 'user'),
+                    'email_notifications': user.get('email_notifications', True)
                 }
         except (ValueError, TypeError):
             # Invalid hash format
@@ -67,7 +81,9 @@ class AuthManager:
             return {
                 'username': user['username'],
                 'full_name': user.get('full_name', username),
-                'role': user.get('role', 'user')
+                'email': user.get('email'),
+                'role': user.get('role', 'user'),
+                'email_notifications': user.get('email_notifications', True)
             }
         return None
 
@@ -77,20 +93,24 @@ class AuthManager:
             {
                 'username': user['username'],
                 'full_name': user.get('full_name', user['username']),
-                'role': user.get('role', 'user')
+                'email': user.get('email'),
+                'role': user.get('role', 'user'),
+                'email_notifications': user.get('email_notifications', True)
             }
             for user in self.users.values()
         ]
 
-    def add_user(self, username, password, full_name=None, role='user'):
+    def add_user(self, username, password, full_name=None, email=None, role='user', email_notifications=True):
         """
-        Add new user to users.yaml file.
+        Add new user to users.xml file.
 
         Args:
             username: Username
             password: Plain text password (will be hashed)
             full_name: User's full name
+            email: User's email address
             role: User role ('admin' or 'user')
+            email_notifications: Enable email notifications
 
         Returns:
             bool: True if successful, False if user already exists
@@ -101,38 +121,40 @@ class AuthManager:
         # Generate bcrypt hash
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        # Load current config
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        # Parse XML
+        tree = ET.parse(self.config_path)
+        root = tree.getroot()
 
-        # Add new user
-        new_user = {
-            'username': username,
-            'full_name': full_name or username,
-            'password_hash': password_hash,
-            'role': role
-        }
+        # Create new user element
+        user_elem = ET.SubElement(root, 'user')
+        ET.SubElement(user_elem, 'username').text = username
+        ET.SubElement(user_elem, 'full_name').text = full_name or username
+        if email:
+            ET.SubElement(user_elem, 'email').text = email
+        ET.SubElement(user_elem, 'password_hash').text = password_hash
+        ET.SubElement(user_elem, 'role').text = role
+        ET.SubElement(user_elem, 'email_notifications').text = str(email_notifications).lower()
 
-        config['users'].append(new_user)
-
-        # Write back to file
-        with open(self.config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        # Write back to file with proper formatting
+        self._indent_xml(root)
+        tree.write(self.config_path, encoding='UTF-8', xml_declaration=True)
 
         # Reload users
         self.reload_users()
 
         return True
 
-    def update_user(self, username, password=None, full_name=None, role=None):
+    def update_user(self, username, password=None, full_name=None, email=None, role=None, email_notifications=None):
         """
-        Update existing user in users.yaml.
+        Update existing user in users.xml.
 
         Args:
             username: Username to update
             password: New password (optional, will be hashed)
             full_name: New full name (optional)
+            email: New email (optional)
             role: New role (optional)
+            email_notifications: Enable/disable email notifications (optional)
 
         Returns:
             bool: True if successful, False if user not found
@@ -140,24 +162,37 @@ class AuthManager:
         if username not in self.users:
             return False
 
-        # Load current config
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        # Parse XML
+        tree = ET.parse(self.config_path)
+        root = tree.getroot()
 
         # Find and update user
-        for user in config['users']:
-            if user['username'] == username:
+        for user_elem in root.findall('user'):
+            if user_elem.find('username').text == username:
                 if password:
-                    user['password_hash'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    user_elem.find('password_hash').text = password_hash
                 if full_name:
-                    user['full_name'] = full_name
+                    user_elem.find('full_name').text = full_name
+                if email is not None:
+                    email_elem = user_elem.find('email')
+                    if email_elem is not None:
+                        email_elem.text = email
+                    else:
+                        ET.SubElement(user_elem, 'email').text = email
                 if role:
-                    user['role'] = role
+                    user_elem.find('role').text = role
+                if email_notifications is not None:
+                    notif_elem = user_elem.find('email_notifications')
+                    if notif_elem is not None:
+                        notif_elem.text = str(email_notifications).lower()
+                    else:
+                        ET.SubElement(user_elem, 'email_notifications').text = str(email_notifications).lower()
                 break
 
         # Write back to file
-        with open(self.config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        self._indent_xml(root)
+        tree.write(self.config_path, encoding='UTF-8', xml_declaration=True)
 
         # Reload users
         self.reload_users()
@@ -166,7 +201,7 @@ class AuthManager:
 
     def delete_user(self, username):
         """
-        Delete user from users.yaml.
+        Delete user from users.xml.
 
         Args:
             username: Username to delete
@@ -181,21 +216,40 @@ class AuthManager:
         if self.users[username].get('role') == 'admin' and username == 'admin':
             return False
 
-        # Load current config
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        # Parse XML
+        tree = ET.parse(self.config_path)
+        root = tree.getroot()
 
         # Remove user
-        config['users'] = [u for u in config['users'] if u['username'] != username]
+        for user_elem in root.findall('user'):
+            if user_elem.find('username').text == username:
+                root.remove(user_elem)
+                break
 
         # Write back to file
-        with open(self.config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        self._indent_xml(root)
+        tree.write(self.config_path, encoding='UTF-8', xml_declaration=True)
 
         # Reload users
         self.reload_users()
 
         return True
+
+    def _indent_xml(self, elem, level=0):
+        """Helper method to add pretty-printing indentation to XML."""
+        indent = "\n" + "    " * level
+        if len(elem):
+            if not elem.text or not elem.text.strip():
+                elem.text = indent + "    "
+            if not elem.tail or not elem.tail.strip():
+                elem.tail = indent
+            for child in elem:
+                self._indent_xml(child, level + 1)
+            if not child.tail or not child.tail.strip():
+                child.tail = indent
+        else:
+            if level and (not elem.tail or not elem.tail.strip()):
+                elem.tail = indent
 
     @staticmethod
     def hash_password(password):

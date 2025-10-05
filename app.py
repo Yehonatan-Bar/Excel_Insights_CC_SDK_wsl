@@ -55,7 +55,7 @@ Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
 Path(app.config['OUTPUT_FOLDER']).mkdir(exist_ok=True)
 
 # Initialize authentication manager
-auth_manager = AuthManager('users.yaml')
+auth_manager = AuthManager('users.xml')
 
 # Track analysis jobs
 analysis_jobs = {}

@@ -6,10 +6,12 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
     full_name VARCHAR(255),
+    email VARCHAR(255),
     role VARCHAR(50) DEFAULT 'user',  -- 'admin' or 'user'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    email_notifications BOOLEAN DEFAULT TRUE
 );
 
 -- Create analyses table
