@@ -14,19 +14,87 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, Arial;
             background: #f5f5f5;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .page-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: calc(100vh - 60px); /* Subtract nav header height */
         }
 
         .dashboard-container {
             width: 100%;
-            min-height: 600px;
-            height: auto;
+            flex: 1;
             border: none;
+            overflow-y: auto;
+            display: block;
         }
 
         .refinement-panel {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
             box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .refinement-panel.collapsed {
+            display: none;
+        }
+
+        .toggle-refinement-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-refinement-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .close-refinement-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-refinement-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
         }
 
         .refinement-content {
@@ -290,6 +358,311 @@
             50% { transform: translateY(-3px); opacity: 0.7; }
         }
 
+        /* Simplified working indicator for non-admin users */
+        .simple-indicator {
+            display: none;
+            max-width: 800px;
+            margin: 30px auto 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .simple-indicator.active {
+            display: block;
+        }
+
+        .indicator-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .indicator-title {
+            color: white;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .indicator-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1em;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #4ec9b0, #9cdcfe, #4ec9b0);
+            height: 100%;
+            width: 100%;
+            animation: shimmer 2s linear infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .rotating-messages {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.95em;
+            min-height: 24px;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        /* Chat Panel Styles */
+        .chat-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 400px;
+            max-height: 600px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: none;
+            flex-direction: column;
+            z-index: 1001;
+        }
+
+        .chat-panel.open {
+            display: flex;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .chat-header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-reset-btn, .chat-close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .chat-reset-btn:hover, .chat-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .chat-close-btn:hover {
+            transform: rotate(90deg);
+        }
+
+        .chat-reset-btn:hover {
+            transform: rotate(360deg);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f5f5f5;
+            max-height: 400px;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message.user {
+            align-items: flex-end;
+        }
+
+        .chat-message.assistant {
+            align-items: flex-start;
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .chat-message.user .chat-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .chat-message.assistant .chat-bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input-container {
+            padding: 15px;
+            background: white;
+            border-radius: 0 0 15px 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.95em;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chat-send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s;
+        }
+
+        .chat-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .chat-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            z-index: 1000;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-toggle-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .chat-info {
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .chat-limit-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .chat-typing {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            padding: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .chat-typing.active {
+            display: flex;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
         .guest-banner {
             background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
             color: white;
@@ -362,7 +735,7 @@
     {% if user and user.is_guest %}
     <div class="guest-banner">
         <strong>👤 מצב אורח:</strong> הניתוח הזה יהיה זמין רק במהלך הפעלה זו.
-        <a href="/logout">התחבר או הירשם</a> לשמירת העבודה שלך לצמיתות.
+        <a href="/logout">התחבר או הירשם</a> לשמירת העבודה שלך.
     </div>
     {% endif %}
 
@@ -381,9 +754,11 @@
         </div>
     </div>
 
-    <iframe id="dashboardFrame" class="dashboard-container" src="/dashboard-content/{{ run_id }}"></iframe>
+    <div class="page-content">
+        <iframe id="dashboardFrame" class="dashboard-container" src="/dashboard-content/{{ run_id }}"></iframe>
 
-    <div class="refinement-panel">
+        <div class="refinement-panel" id="refinementPanel">
+        <button class="close-refinement-btn" id="closeRefinementBtn" onclick="toggleRefinementPanel()">✕</button>
         <div class="refinement-content">
             <h3 class="refinement-title">💡 שכלל את הניתוח שלך</h3>
             <form class="refinement-form" id="refinementForm">
@@ -402,33 +777,110 @@
             </div>
         </div>
     </div>
+    </div> <!-- End of page-content -->
+
+    <!-- Floating toggle button (hidden by default, shown when panel is collapsed) -->
+    <button class="toggle-refinement-btn" id="toggleRefinementBtn" onclick="toggleRefinementPanel()" style="display: none;">
+        💡 שכלל ניתוח
+    </button>
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">משכלל את הניתוח שלך...</div>
         <div class="loading-subtext" id="loadingTime">זמן שחלף: 0 שניות</div>
 
+        {% if user and user.role == 'admin' %}
+        <!-- Full activity panel with detailed logs - Admin only -->
         <div class="activity-panel" id="activityPanel" style="display: block; max-width: 800px; margin-top: 30px;">
             <h4>
                 <span>🧠 הסוכן חושב ועובד</span>
-                {% if user and user.role == 'admin' %}
                 <span class="live-indicator live-indicator-admin">שידור חי</span>
-                {% else %}
-                <span class="live-indicator live-indicator-user">
-                    <span class="pulse-dot"></span>
-                    <span class="wave-text">
-                        <span>פ</span><span>ע</span><span>י</span><span>ל</span>
-                    </span>
-                </span>
-                {% endif %}
             </h4>
             <div class="activity-log" id="activityLog">
                 <!-- אירועים יוזרמו לכאן בזמן אמת -->
             </div>
         </div>
+        {% else %}
+        <!-- Simplified indicator - Regular users -->
+        <div class="simple-indicator active" id="simpleIndicator">
+            <div class="indicator-icon">🔄</div>
+            <div class="indicator-title">
+                <span class="pulse-dot"></span>
+                <span>משכלל את הניתוח שלך</span>
+            </div>
+            <div class="indicator-subtitle">הבינה המלאכותית מעבדת את המשוב שלך ומשדרגת את הדאשבורד</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="rotating-messages" id="rotatingMessages">
+                מעבד משוב...
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Chat Toggle Button -->
+    <button class="chat-toggle-btn" id="chatToggleBtn" onclick="toggleChat()">
+        💬 שוחח עם Claude על הקובץ
+    </button>
+
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <h3>💬 שיחה עם Claude</h3>
+            <div class="chat-header-buttons">
+                <button class="chat-reset-btn" onclick="resetChat()" title="איפוס שיחה">🔄</button>
+                <button class="chat-close-btn" onclick="toggleChat()">✕</button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-info" id="chatInfo">
+                לחץ על "התחל שיחה" כדי להתחיל לשוחח עם Claude על קובץ ה-Excel שלך
+            </div>
+        </div>
+        <div class="chat-typing" id="chatTyping">
+            <span>Claude מקליד</span>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm" onsubmit="sendChatMessage(event)">
+                <input
+                    type="text"
+                    class="chat-input"
+                    id="chatInput"
+                    placeholder="שאל שאלה על הקובץ..."
+                    disabled
+                />
+                <button type="submit" class="chat-send-btn" id="chatSendBtn" disabled>
+                    שלח
+                </button>
+            </form>
+        </div>
     </div>
 
     <script>
+        // Toggle refinement panel visibility
+        function toggleRefinementPanel() {
+            const panel = document.getElementById('refinementPanel');
+            const toggleBtn = document.getElementById('toggleRefinementBtn');
+
+            if (panel.classList.contains('collapsed')) {
+                // Show panel
+                panel.classList.remove('collapsed');
+                toggleBtn.style.display = 'none';
+                // Scroll to the refinement panel
+                setTimeout(() => {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                // Hide panel
+                panel.classList.add('collapsed');
+                toggleBtn.style.display = 'flex';
+            }
+        }
+
         // Helper function to escape HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -484,6 +936,40 @@
         const btn = document.getElementById('refinementBtn');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingTime = document.getElementById('loadingTime');
+        let messageRotationInterval = null;
+
+        // Rotating messages for non-admin users
+        const rotatingMessagesArray = [
+            'מנתח משוב...',
+            'משכלל תצוגות חזותיות...',
+            'מעדכן דאשבורד...',
+            'מחשב מחדש סטטיסטיקות...',
+            'מייצר תובנות נוספות...',
+            'בונה גרפים חדשים...'
+        ];
+
+        function startMessageRotation() {
+            const rotatingMessages = document.getElementById('rotatingMessages');
+            if (!rotatingMessages) return;
+
+            let currentIndex = 0;
+            messageRotationInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % rotatingMessagesArray.length;
+                rotatingMessages.textContent = rotatingMessagesArray[currentIndex];
+            }, 3000); // Change message every 3 seconds
+        }
+
+        function stopMessageRotation() {
+            if (messageRotationInterval) {
+                clearInterval(messageRotationInterval);
+                messageRotationInterval = null;
+            }
+        }
+
+        // Start rotation immediately for non-admin users
+        if (document.getElementById('simpleIndicator')) {
+            startMessageRotation();
+        }
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -522,16 +1008,22 @@
                 if (result.success) {
                     // Clear previous activity log
                     const activityLog = document.getElementById('activityLog');
-                    activityLog.innerHTML = '';
+                    if (activityLog) {
+                        activityLog.innerHTML = '';
+                    }
                     let lastEventCount = 0;
+
+                    // Start message rotation for non-admin users
+                    startMessageRotation();
 
                     // Poll for completion and activity
                     const pollInterval = setInterval(async () => {
                         const statusResponse = await fetch(`/status/${result.new_run_id}`);
                         const status = await statusResponse.json();
 
-                        // Update activity log with new events
-                        if (status.events && status.events.length > 0) {
+                        // Update activity log with new events (admin only)
+                        const activityLog = document.getElementById('activityLog');
+                        if (activityLog && status.events && status.events.length > 0) {
                             const currentEventCount = status.event_count || 0;
                             if (currentEventCount > lastEventCount) {
                                 const eventsToShow = status.events.slice(-(currentEventCount - lastEventCount));
@@ -545,11 +1037,13 @@
                         if (status.ready && status.dashboard_url) {
                             clearInterval(pollInterval);
                             clearInterval(timeInterval);
+                            stopMessageRotation();
                             // Reload to show new dashboard
                             window.location.href = status.dashboard_url;
                         } else if (status.status === 'error') {
                             clearInterval(pollInterval);
                             clearInterval(timeInterval);
+                            stopMessageRotation();
                             loadingOverlay.classList.remove('active');
                             alert('שגיאה במהלך השכלול: ' + (status.error || 'שגיאה לא ידועה'));
                             btn.disabled = false;
@@ -568,6 +1062,255 @@
                 btn.disabled = false;
             }
         });
+    </script>
+
+    <script>
+        // Chat functionality
+        let chatInitialized = false;
+        let chatSessionInfo = null;
+
+        function toggleChat() {
+            const panel = document.getElementById('chatPanel');
+            const toggleBtn = document.getElementById('chatToggleBtn');
+
+            if (panel.classList.contains('open')) {
+                panel.classList.remove('open');
+                toggleBtn.style.display = 'flex';
+            } else {
+                panel.classList.add('open');
+                toggleBtn.style.display = 'none';
+
+                // Initialize chat if not already initialized
+                if (!chatInitialized) {
+                    initializeChat();
+                }
+            }
+        }
+
+        async function initializeChat() {
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatInfo = document.getElementById('chatInfo');
+
+            try {
+                const response = await fetch('/chat/{{ run_id }}/init', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    chatInitialized = true;
+                    chatSessionInfo = result;
+
+                    // Enable input
+                    chatInput.disabled = false;
+                    chatSendBtn.disabled = false;
+
+                    // Update info message
+                    chatInfo.innerHTML = `
+                        <strong>✅ שיחה מאותחלת!</strong><br>
+                        אתה יכול לשאול עד ${result.max_messages} שאלות על קובץ ה-Excel.<br>
+                        שאלות שנותרו: ${result.remaining_messages}
+                    `;
+
+                    // Load existing conversation if any
+                    loadChatHistory();
+
+                } else {
+                    chatInfo.innerHTML = `<strong>❌ שגיאה:</strong> ${result.error}`;
+                    chatInfo.className = 'chat-info chat-limit-warning';
+                }
+
+            } catch (error) {
+                chatInfo.innerHTML = `<strong>❌ שגיאה:</strong> לא ניתן להתחבר לשרת`;
+                chatInfo.className = 'chat-info chat-limit-warning';
+            }
+        }
+
+        async function loadChatHistory() {
+            try {
+                const response = await fetch('/chat/{{ run_id }}');
+                const result = await response.json();
+
+                if (result.success && result.messages && result.messages.length > 0) {
+                    const chatMessages = document.getElementById('chatMessages');
+                    const chatInfo = document.getElementById('chatInfo');
+
+                    // Clear welcome message
+                    chatInfo.style.display = 'none';
+
+                    // Display messages
+                    result.messages.forEach(msg => {
+                        if (msg.role === 'user') {
+                            addMessageToUI(msg.content, 'user');
+                        } else {
+                            addMessageToUI(msg.content, 'assistant');
+                        }
+                    });
+
+                    // Update session info
+                    chatSessionInfo = result;
+                    updateChatInfo();
+                }
+
+            } catch (error) {
+                console.error('Failed to load chat history:', error);
+            }
+        }
+
+        async function sendChatMessage(event) {
+            event.preventDefault();
+
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatTyping = document.getElementById('chatTyping');
+            const message = chatInput.value.trim();
+
+            if (!message) return;
+
+            // Add user message to UI
+            addMessageToUI(message, 'user');
+
+            // Clear input and disable
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+
+            // Show typing indicator
+            chatTyping.classList.add('active');
+
+            try {
+                const response = await fetch('/chat/{{ run_id }}/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const result = await response.json();
+
+                // Hide typing indicator
+                chatTyping.classList.remove('active');
+
+                if (result.success) {
+                    // Add assistant response to UI
+                    addMessageToUI(result.response, 'assistant');
+
+                    // Update session info
+                    chatSessionInfo = result;
+                    updateChatInfo();
+
+                    // Re-enable input if not at limit
+                    if (result.remaining_messages > 0) {
+                        chatInput.disabled = false;
+                        chatSendBtn.disabled = false;
+                        chatInput.focus();
+                    } else {
+                        // Limit reached
+                        const chatInfo = document.getElementById('chatInfo');
+                        chatInfo.style.display = 'block';
+                        chatInfo.innerHTML = `
+                            <strong>⚠️ הגעת למגבלת השיחה</strong><br>
+                            הגעת למקסימום של ${result.max_messages} שאלות בשיחה זו.
+                        `;
+                        chatInfo.className = 'chat-info chat-limit-warning';
+                    }
+
+                } else {
+                    // Error occurred
+                    addMessageToUI(`שגיאה: ${result.error}`, 'assistant');
+                    chatInput.disabled = false;
+                    chatSendBtn.disabled = false;
+                }
+
+            } catch (error) {
+                chatTyping.classList.remove('active');
+                addMessageToUI('שגיאה בשליחת הודעה. נסה שוב.', 'assistant');
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+            }
+        }
+
+        function addMessageToUI(content, role) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'chat-bubble';
+            bubbleDiv.textContent = content;
+
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function updateChatInfo() {
+            if (!chatSessionInfo) return;
+
+            const chatInfo = document.getElementById('chatInfo');
+            chatInfo.style.display = 'block';
+            chatInfo.innerHTML = `שאלות שנותרו: ${chatSessionInfo.remaining_messages} מתוך ${chatSessionInfo.max_messages}`;
+
+            if (chatSessionInfo.remaining_messages <= 3) {
+                chatInfo.className = 'chat-info chat-limit-warning';
+            } else {
+                chatInfo.className = 'chat-info';
+            }
+        }
+
+        async function resetChat() {
+            if (!confirm('האם אתה בטוח שברצונך לאפס את השיחה? כל ההיסטוריה תימחק.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/chat/{{ run_id }}/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Clear UI messages
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '';
+
+                    // Recreate the info div (it was removed by innerHTML = '')
+                    const newChatInfo = document.createElement('div');
+                    newChatInfo.className = 'chat-info';
+                    newChatInfo.id = 'chatInfo';
+                    newChatInfo.innerHTML = 'השיחה אופסה! מאתחל שיחה חדשה...';
+                    chatMessages.appendChild(newChatInfo);
+
+                    // Reset state
+                    chatInitialized = false;
+                    chatSessionInfo = null;
+
+                    // Disable input temporarily
+                    document.getElementById('chatInput').disabled = true;
+                    document.getElementById('chatSendBtn').disabled = true;
+
+                    // Re-initialize
+                    initializeChat();
+                } else {
+                    alert('שגיאה באיפוס השיחה: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+
+            } catch (error) {
+                alert('שגיאה באיפוס השיחה: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html>

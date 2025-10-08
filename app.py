@@ -17,6 +17,7 @@ load_dotenv()
 from auth import AuthManager, login_required, admin_required, registered_user_required, create_guest_session, is_guest_user, is_authenticated_user
 from database import db, User, Analysis, ActivityLog
 from email_service import email_service
+from chat_service import get_chat_service
 
 # Validate API key is set
 if not os.environ.get('ANTHROPIC_API_KEY'):
@@ -620,6 +621,145 @@ def check_status(run_id):
         response['ready'] = False
 
     return jsonify(response)
+
+
+# ========== CHAT ROUTES ==========
+
+@app.route('/chat/<run_id>/init', methods=['POST'])
+@login_required
+def init_chat_session(run_id):
+    """Initialize a chat session for an Excel file."""
+    # Find the original file path from analysis jobs or database
+    file_path = None
+    filename = None
+    dashboard_path = None
+
+    # First, try to get from in-memory analysis_jobs (for fresh uploads)
+    if run_id in analysis_jobs:
+        filename = analysis_jobs[run_id].get('filename')
+        if filename:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+    # If not found, try to get from database (for history access)
+    if not file_path:
+        try:
+            analysis = Analysis.get_by_run_id(run_id)
+            if analysis and analysis.get('filename'):
+                filename = analysis['filename']
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        except Exception as e:
+            print(f"Error looking up analysis from database: {e}")
+
+    # Check if file exists
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({
+            'error': 'Excel file not found for this analysis',
+            'success': False
+        }), 404
+
+    # Check if dashboard exists (to include analysis context)
+    dashboard_file = Path(app.config['OUTPUT_FOLDER']) / run_id / "dashboard.html"
+    if dashboard_file.exists():
+        dashboard_path = str(dashboard_file)
+
+    try:
+        chat_svc = get_chat_service()
+        session_info = chat_svc.initialize_session(run_id, file_path, dashboard_path)
+
+        return jsonify({
+            'success': True,
+            **session_info
+        })
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to initialize chat: {str(e)}',
+            'success': False
+        }), 500
+
+
+@app.route('/chat/<run_id>', methods=['GET'])
+@login_required
+def get_chat_info(run_id):
+    """Get chat session info and conversation history."""
+    try:
+        chat_svc = get_chat_service()
+        session_info = chat_svc.get_session_info(run_id)
+
+        if session_info is None:
+            return jsonify({
+                'error': 'Chat session not found',
+                'success': False,
+                'initialized': False
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'initialized': True,
+            **session_info
+        })
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to get chat info: {str(e)}',
+            'success': False
+        }), 500
+
+
+@app.route('/chat/<run_id>/message', methods=['POST'])
+@login_required
+def send_chat_message(run_id):
+    """Send a message in the chat session."""
+    data = request.get_json()
+    user_message = data.get('message', '').strip()
+
+    if not user_message:
+        return jsonify({
+            'error': 'Message cannot be empty',
+            'success': False
+        }), 400
+
+    try:
+        chat_svc = get_chat_service()
+        result = chat_svc.send_message(run_id, user_message)
+
+        if not result.get('success'):
+            status_code = 400 if result.get('limit_reached') else 500
+            return jsonify(result), status_code
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to send message: {str(e)}',
+            'success': False
+        }), 500
+
+
+@app.route('/chat/<run_id>/clear', methods=['POST'])
+@login_required
+def clear_chat_session(run_id):
+    """Clear a chat session."""
+    try:
+        chat_svc = get_chat_service()
+        success = chat_svc.clear_session(run_id)
+
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Chat session cleared'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Chat session not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to clear chat: {str(e)}',
+            'success': False
+        }), 500
 
 
 @app.route('/api/active-jobs')
