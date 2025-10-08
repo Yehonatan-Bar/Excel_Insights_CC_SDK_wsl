@@ -134,7 +134,7 @@ class EmailService:
 
             <center>
                 <a href="{dashboard_url}" class="button">
-                    👁️ צפה בלוח הבקרה
+                    👁️ צפיה בלוח הבקרה
                 </a>
             </center>
 

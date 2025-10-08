@@ -18,7 +18,8 @@
 
         .dashboard-container {
             width: 100%;
-            height: calc(100vh - 200px);
+            min-height: 600px;
+            height: auto;
             border: none;
         }
 
@@ -232,6 +233,63 @@
             display: block;
         }
 
+        /* Live indicator styles */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8em;
+            margin-right: auto;
+        }
+
+        .live-indicator-admin {
+            color: #858585;
+        }
+
+        .live-indicator-user {
+            color: #4ec9b0;
+            font-weight: 500;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ec9b0;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(78, 201, 176, 0.7);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(78, 201, 176, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 6px rgba(78, 201, 176, 0);
+            }
+        }
+
+        .wave-text {
+            display: inline-block;
+        }
+
+        .wave-text span {
+            display: inline-block;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+
+        .wave-text span:nth-child(1) { animation-delay: 0s; }
+        .wave-text span:nth-child(2) { animation-delay: 0.1s; }
+        .wave-text span:nth-child(3) { animation-delay: 0.2s; }
+        .wave-text span:nth-child(4) { animation-delay: 0.3s; }
+
+        @keyframes wave {
+            0%, 100% { transform: translateY(0px); opacity: 1; }
+            50% { transform: translateY(-3px); opacity: 0.7; }
+        }
+
         .guest-banner {
             background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
             color: white;
@@ -254,6 +312,50 @@
         .guest-banner a:hover {
             opacity: 0.8;
         }
+
+        .nav-header {
+            background: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .nav-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .nav-btn-secondary:hover {
+            background: #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -264,6 +366,21 @@
     </div>
     {% endif %}
 
+    <div class="nav-header">
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-btn nav-btn-secondary">🏠 דף הבית</a>
+            {% if user and not user.is_guest %}
+            <a href="{{ url_for('my_history') }}" class="nav-btn nav-btn-primary">📊 ההיסטוריה שלי</a>
+            {% endif %}
+            {% if user and user.role == 'admin' %}
+            <a href="{{ url_for('admin_panel') }}" class="nav-btn nav-btn-primary">🔧 פאנל ניהול</a>
+            {% endif %}
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-secondary">🚪 התנתק</a>
+        </div>
+    </div>
+
     <iframe id="dashboardFrame" class="dashboard-container" src="/dashboard-content/{{ run_id }}"></iframe>
 
     <div class="refinement-panel">
@@ -273,7 +390,7 @@
                 <textarea
                     class="refinement-input"
                     id="refinementInput"
-                    placeholder="בקש שיפורים, ציין שגיאות, או בקש תובנות ספציפיות...&#10;&#10;דוגמאות:&#10;• הוסף השוואה בין אזור א' לאזור ב'&#10;• מפת המתאם חסרה - אנא הוסף אותה&#10;• נתח את המגמה ל-6 החודשים האחרונים בלבד&#10;• הוסף תרשימי קופסה להצגת חריגים בנתוני המכירות"
+                    placeholder="ניתן לבקש שיפורים, לציין שגיאות, או לבקש תובנות ספציפיות...&#10;&#10;דוגמאות:&#10;• הוספת השוואה בין אזור א' לאזור ב'&#10;• מפת המתאם חסרה - אנא הוסף אותה&#10;• נתח את המגמה ל-6 החודשים האחרונים בלבד&#10;• הוסף תרשימי קופסה להצגת חריגים בנתוני המכירות"
                     rows="3"
                 ></textarea>
                 <button type="submit" class="refinement-btn" id="refinementBtn">
@@ -281,7 +398,7 @@
                 </button>
             </form>
             <div class="refinement-examples">
-                <strong>טיפ:</strong> היה ספציפי! הסוכן ינתח מחדש עם המשוב שלך בחשבון.
+                <strong>טיפ:</strong> להיות ספציפיים! הסוכן ינתח מחדש עם המשוב שלך בחשבון.
             </div>
         </div>
     </div>
@@ -294,7 +411,16 @@
         <div class="activity-panel" id="activityPanel" style="display: block; max-width: 800px; margin-top: 30px;">
             <h4>
                 <span>🧠 הסוכן חושב ועובד</span>
-                <span style="font-size: 0.8em; color: #858585; margin-right: auto;">שידור חי</span>
+                {% if user and user.role == 'admin' %}
+                <span class="live-indicator live-indicator-admin">שידור חי</span>
+                {% else %}
+                <span class="live-indicator live-indicator-user">
+                    <span class="pulse-dot"></span>
+                    <span class="wave-text">
+                        <span>פ</span><span>ע</span><span>י</span><span>ל</span>
+                    </span>
+                </span>
+                {% endif %}
             </h4>
             <div class="activity-log" id="activityLog">
                 <!-- אירועים יוזרמו לכאן בזמן אמת -->

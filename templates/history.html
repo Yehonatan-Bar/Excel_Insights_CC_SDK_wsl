@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ההיסטוריה שלי - ניתוחים ופעילות</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2em;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .guest-notice {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .guest-notice h2 {
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .guest-notice p {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section-header h2 {
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .section-header .count {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        /* Analysis Cards */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .analysis-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .analysis-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .analysis-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .analysis-filename {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            word-break: break-word;
+            flex: 1;
+        }
+
+        .analysis-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            white-space: nowrap;
+            margin-right: 10px;
+        }
+
+        .status-completed {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-running, .status-starting {
+            background: #2196f3;
+            color: white;
+        }
+
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+
+        .status-error {
+            background: #f44336;
+            color: white;
+        }
+
+        .analysis-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .analysis-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .analysis-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .analysis-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .analysis-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Activity Log */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .activity-item:hover {
+            background: #f8f9ff;
+            border-right-width: 6px;
+        }
+
+        .activity-icon {
+            font-size: 1.5em;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-type {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .activity-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .activity-time {
+            color: #999;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .nav-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 ההיסטוריה שלי</h1>
+            <div class="nav-actions">
+                {% if user and user.role == 'admin' %}
+                <a href="{{ url_for('admin_panel') }}" class="btn btn-primary">🔧 פאנל ניהול</a>
+                {% endif %}
+                <a href="{{ url_for('index') }}" class="btn btn-primary">🏠 חזרה לדף הבית</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">🚪 התנתק</a>
+            </div>
+        </div>
+
+        <!-- Guest Notice -->
+        {% if is_guest %}
+        <div class="guest-notice">
+            <h2>👤 אתה משתמש במצב אורח</h2>
+            <p>משתמשי אורח אינם יכולים לשמור היסטוריה. התחבר עם חשבון רשום כדי לשמור את הניתוחים והפעילויות שלך.</p>
+            <a href="{{ url_for('logout') }}" class="btn btn-primary" style="margin-top: 15px;">📝 התחבר או הירשם</a>
+        </div>
+        {% elif database_unavailable %}
+        <div class="guest-notice">
+            <h2>⚠️ מסד הנתונים אינו זמין</h2>
+            <p>לא ניתן להציג את ההיסטוריה שלך כרגע מכיוון שמסד הנתונים אינו זמין.</p>
+            <p>אנא נסה שוב מאוחר יותר או פנה למנהל המערכת.</p>
+            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">אתה מחובר כ: {{ user.full_name }} ({{ user.username }})</p>
+        </div>
+        {% else %}
+
+        <!-- Analyses Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📁 הניתוחים שלי</h2>
+                <span class="count">{{ analyses|length }}</span>
+            </div>
+
+            {% if analyses %}
+            <div class="analysis-grid">
+                {% for analysis in analyses %}
+                <div class="analysis-card">
+                    <div class="analysis-card-header">
+                        <div class="analysis-filename">📄 {{ analysis.filename }}</div>
+                        <span class="analysis-status status-{{ analysis.status }}">
+                            {% if analysis.status == 'completed' %}✅ הושלם
+                            {% elif analysis.status == 'running' %}⚙️ פועל
+                            {% elif analysis.status == 'starting' %}🚀 מתחיל
+                            {% elif analysis.status == 'pending' %}⏳ ממתין
+                            {% elif analysis.status == 'error' %}❌ שגיאה
+                            {% else %}{{ analysis.status }}
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="analysis-meta">
+                        <div class="analysis-meta-item">
+                            <span>🕐</span>
+                            <span>נוצר: {{ analysis.created_at.strftime('%d/%m/%Y %H:%M') if analysis.created_at else 'לא ידוע' }}</span>
+                        </div>
+                        {% if analysis.completed_at %}
+                        <div class="analysis-meta-item">
+                            <span>✅</span>
+                            <span>הושלם: {{ analysis.completed_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="analysis-meta-item">
+                            <span>🔑</span>
+                            <span>מזהה: {{ analysis.run_id }}</span>
+                        </div>
+                    </div>
+
+                    {% if analysis.status == 'completed' %}
+                    <div class="analysis-actions">
+                        <a href="{{ url_for('view_dashboard', run_id=analysis.run_id) }}" class="analysis-btn">
+                            📈 צפיה בלוח הבקרה
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>עדיין לא ביצעת ניתוחים</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">📤 העלה קובץ אקסל</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Activity Log Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📜 יומן פעילות</h2>
+                <span class="count">{{ activity_logs|length }}</span>
+            </div>
+
+            {% if activity_logs %}
+            <div class="activity-list">
+                {% for log in activity_logs %}
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        {% if log.event_type == 'login' %}🔐
+                        {% elif log.event_type == 'logout' %}🚪
+                        {% elif log.event_type == 'upload' %}📤
+                        {% elif log.event_type == 'view_dashboard' %}👁️
+                        {% elif log.event_type == 'refine' %}🔄
+                        {% elif log.event_type == 'admin_add_user' %}➕
+                        {% elif log.event_type == 'admin_update_user' %}✏️
+                        {% elif log.event_type == 'admin_delete_user' %}🗑️
+                        {% else %}📝
+                        {% endif %}
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-type">
+                            {% if log.event_type == 'login' %}התחברות למערכת
+                            {% elif log.event_type == 'logout' %}התנתקות מהמערכת
+                            {% elif log.event_type == 'upload' %}העלאת קובץ לניתוח
+                            {% elif log.event_type == 'view_dashboard' %}צפייה בלוח בקרה
+                            {% elif log.event_type == 'refine' %}שכלול ניתוח
+                            {% elif log.event_type == 'admin_add_user' %}הוספת משתמש (מנהל)
+                            {% elif log.event_type == 'admin_update_user' %}עדכון משתמש (מנהל)
+                            {% elif log.event_type == 'admin_delete_user' %}מחיקת משתמש (מנהל)
+                            {% else %}{{ log.event_type }}
+                            {% endif %}
+                        </div>
+                        <div class="activity-details">
+                            {% if log.filename %}
+                            קובץ: {{ log.filename }}
+                            {% endif %}
+                            {% if log.event_data %}
+                                {% if log.event_data.ip %}
+                                | IP: {{ log.event_data.ip }}
+                                {% endif %}
+                                {% if log.event_data.filesize %}
+                                | גודל: {{ (log.event_data.filesize / 1024 / 1024) | round(2) }} MB
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="activity-time">
+                        {{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') if log.created_at else 'לא ידוע' }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>אין פעילות רשומה</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% endif %}
+    </div>
+</body>
+</html>

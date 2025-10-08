@@ -62,6 +62,65 @@ auth_manager = AuthManager('users.xml')
 analysis_jobs = {}
 
 
+def persist_job_state(run_id):
+    """Persist the current job state to database for session recovery."""
+    # NOTE: Job state persistence is disabled - requires job_state column in database
+    # Uncomment and add migration when implementing full job persistence
+    return
+
+    # if run_id not in analysis_jobs:
+    #     return
+
+    # job = analysis_jobs[run_id]
+    # user_id = job.get('user_id')
+
+    # # Skip persistence for guest users (no database tracking)
+    # if not user_id:
+    #     return
+
+    # try:
+    #     Analysis.update_job_state(run_id, job)
+    # except Exception as e:
+    #     print(f"⚠️  Failed to persist job state for {run_id}: {e}")
+
+
+def restore_jobs_from_database():
+    """Restore active jobs from database on server startup."""
+    # NOTE: Job state restoration is disabled - requires job_state column in database
+    # Jobs will be marked as error if server restarts during analysis
+    return
+
+    # try:
+    #     active_jobs = Analysis.get_active_jobs()
+
+    #     for job_record in active_jobs:
+    #         run_id = job_record['run_id']
+    #         job_state = job_record.get('job_state')
+
+    #         if job_state:
+    #             # Restore job to in-memory dict
+    #             analysis_jobs[run_id] = job_state
+    #             print(f"✅ Restored active job: {run_id} (status: {job_state.get('status')})")
+    #         else:
+    #             # Job exists in DB but has no state - mark as error
+    #             analysis_jobs[run_id] = {
+    #                 'status': 'error',
+    #                 'message': 'Job state lost due to server restart',
+    #                 'filename': job_record['filename'],
+    #                 'user_id': job_record['user_id'],
+    #                 'events': [],
+    #                 'event_count': 0,
+    #                 'error': 'Server was restarted - job state not recoverable'
+    #             }
+    #             Analysis.update_status(run_id, 'error', {'error': 'Server restart'})
+
+    #     if len(active_jobs) > 0:
+    #         print(f"📦 Restored {len(active_jobs)} active job(s) from database")
+
+    # except Exception as e:
+    #     print(f"⚠️  Failed to restore jobs from database: {e}")
+
+
 def allowed_file(filename):
     """Check if file extension is allowed."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -93,7 +152,7 @@ def login():
             session['user'] = user_data
             session.permanent = True
 
-            # Update/create user in database
+            # Update/create user in database (optional - gracefully handle if DB unavailable)
             try:
                 db_user = User.create_or_update(
                     username=user_data['username'],
@@ -111,18 +170,18 @@ def login():
 
                 session['user_id'] = db_user['id']
 
-                flash(f'ברוך הבא, {user_data["full_name"]}!', 'success')
-
-                # Redirect to next page or index
-                next_page = request.args.get('next')
-                if next_page:
-                    return redirect(next_page)
-                return redirect(url_for('index'))
-
             except Exception as e:
-                print(f"Database error during login: {e}")
-                flash('שגיאה בהתחברות למערכת', 'error')
-                return render_template('login.html')
+                # Database unavailable - continue without DB tracking
+                print(f"⚠️  Database unavailable during login (continuing without DB tracking): {e}")
+                session['user_id'] = None
+
+            flash(f'ברוך הבא, {user_data["full_name"]}!', 'success')
+
+            # Redirect to next page or index
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
         else:
             flash('שם משתמש או סיסמה שגויים', 'error')
             return render_template('login.html')
@@ -154,7 +213,7 @@ def logout():
     """Logout handler."""
     is_guest = session.get('is_guest', False)
 
-    if not is_guest and 'user_id' in session:
+    if not is_guest and 'user_id' in session and session['user_id'] is not None:
         try:
             ActivityLog.log_event(
                 user_id=session['user_id'],
@@ -163,7 +222,7 @@ def logout():
                 event_data={'ip': request.remote_addr}
             )
         except Exception as e:
-            print(f"Error logging logout: {e}")
+            print(f"⚠️  Database unavailable during logout: {e}")
 
     session.clear()
 
@@ -175,7 +234,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, original_run_id=None):
+def run_analysis_async(run_id, filepath, output_dir, additional_instructions=None, refinement_prompt=None, original_run_id=None):
     """Run analysis in background thread."""
     try:
         if refinement_prompt:
@@ -185,6 +244,9 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
             analysis_jobs[run_id]['status'] = 'running'
             analysis_jobs[run_id]['message'] = 'Claude Agent is deeply analyzing your data...'
 
+        # Persist initial running state
+        persist_job_state(run_id)
+
         # Define event callback to receive real-time events
         def event_callback(log_entry):
             """Receive events from agent in real-time."""
@@ -193,6 +255,10 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
             analysis_jobs[run_id]['event_count'] += 1
             print(f"Total events now: {analysis_jobs[run_id]['event_count']}")
 
+            # Persist state every 5 events for efficiency
+            if analysis_jobs[run_id]['event_count'] % 5 == 0:
+                persist_job_state(run_id)
+
         # Send initial event
         if refinement_prompt:
             event_callback({
@@ -200,6 +266,13 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
                 'type': 'text',
                 'content': f'Refinement started: "{refinement_prompt[:100]}..."',
                 'icon': '🔄'
+            })
+        elif additional_instructions:
+            event_callback({
+                'timestamp': datetime.now().strftime("%H:%M:%S"),
+                'type': 'text',
+                'content': f'Analysis started with custom instructions: "{additional_instructions[:100]}..."',
+                'icon': '🚀'
             })
         else:
             event_callback({
@@ -213,6 +286,7 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
             file_path=filepath,
             output_dir=output_dir,
             event_callback=event_callback,
+            additional_instructions=additional_instructions,
             refinement_prompt=refinement_prompt,
             original_run_id=original_run_id
         )
@@ -220,6 +294,18 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
         analysis_jobs[run_id]['status'] = 'completed'
         analysis_jobs[run_id]['result'] = result
         analysis_jobs[run_id]['message'] = 'Analysis complete!' if not refinement_prompt else 'Refinement complete!'
+
+        # Update database status (skip for guests)
+        user_id = analysis_jobs[run_id].get('user_id')
+        if user_id:
+            try:
+                Analysis.update_status(run_id, 'completed', result)
+                print(f"✅ Updated database status to 'completed' for run_id: {run_id}")
+            except Exception as db_error:
+                print(f"⚠️ Failed to update database status: {db_error}")
+
+        # Persist completed state
+        persist_job_state(run_id)
 
         # Send email notification if requested
         if analysis_jobs[run_id].get('send_email') and analysis_jobs[run_id].get('user_email'):
@@ -243,6 +329,18 @@ def run_analysis_async(run_id, filepath, output_dir, refinement_prompt=None, ori
         analysis_jobs[run_id]['status'] = 'error'
         analysis_jobs[run_id]['error'] = str(e)
         analysis_jobs[run_id]['message'] = f'Error: {str(e)}'
+
+        # Update database status (skip for guests)
+        user_id = analysis_jobs[run_id].get('user_id')
+        if user_id:
+            try:
+                Analysis.update_status(run_id, 'error', {'error': str(e)})
+                print(f"✅ Updated database status to 'error' for run_id: {run_id}")
+            except Exception as db_error:
+                print(f"⚠️ Failed to update database status: {db_error}")
+
+        # Persist error state
+        persist_job_state(run_id)
 
         # Send error notification email if requested
         if analysis_jobs[run_id].get('send_email') and analysis_jobs[run_id].get('user_email'):
@@ -307,6 +405,9 @@ def upload_file():
         user_email = session.get('user', {}).get('email')
         user_full_name = session.get('user', {}).get('full_name', 'User')
 
+        # Get additional instructions if provided
+        additional_instructions = request.form.get('additional_instructions', '').strip()
+
         # Initialize job tracking
         analysis_jobs[run_id] = {
             'status': 'starting',
@@ -317,13 +418,17 @@ def upload_file():
             'event_count': 0,  # Track for efficient polling
             'send_email': send_email and user_email is not None,  # Only if user has email
             'user_email': user_email,
-            'user_full_name': user_full_name
+            'user_full_name': user_full_name,
+            'additional_instructions': additional_instructions  # Store user instructions
         }
+
+        # Persist initial job state
+        persist_job_state(run_id)
 
         # Start analysis in background thread (NO TIMEOUT!)
         thread = threading.Thread(
             target=run_analysis_async,
-            args=(run_id, filepath, app.config['OUTPUT_FOLDER'])
+            args=(run_id, filepath, app.config['OUTPUT_FOLDER'], additional_instructions)
         )
         thread.daemon = True
         thread.start()
@@ -458,6 +563,9 @@ def refine_analysis(run_id):
         'refinement_prompt': refinement_prompt
     }
 
+    # Persist initial refinement job state
+    persist_job_state(new_run_id)
+
     # Start refinement in background thread
     thread = threading.Thread(
         target=run_analysis_async,
@@ -512,6 +620,124 @@ def check_status(run_id):
         response['ready'] = False
 
     return jsonify(response)
+
+
+@app.route('/api/active-jobs')
+@login_required
+def get_active_jobs():
+    """Get all active jobs for the current user (for session restoration)."""
+    user_id = session.get('user_id')
+    is_guest = session.get('is_guest', False)
+
+    # Guests don't have persistent jobs
+    if is_guest or not user_id:
+        return jsonify({"active_jobs": []})
+
+    try:
+        # Get active jobs from database
+        active_jobs = Analysis.get_active_jobs(user_id)
+
+        # Build response with job info
+        jobs_list = []
+        for job_record in active_jobs:
+            run_id = job_record['run_id']
+            # Check if job is in memory
+            if run_id in analysis_jobs:
+                job = analysis_jobs[run_id]
+                jobs_list.append({
+                    'run_id': run_id,
+                    'filename': job.get('filename', ''),
+                    'status': job.get('status', 'unknown'),
+                    'message': job.get('message', ''),
+                    'is_refinement': job.get('is_refinement', False)
+                })
+            else:
+                # Job not in memory - it's a stale job (server restarted)
+                # Mark it as error in database so it doesn't show as active anymore
+                try:
+                    Analysis.update_status(
+                        run_id,
+                        'error',
+                        {'error': 'Server restarted - job state lost'}
+                    )
+                    print(f"⚠️ Marked stale job {run_id} as error (server restart)")
+                except Exception as update_error:
+                    print(f"⚠️ Failed to update stale job {run_id}: {update_error}")
+
+                # Don't include in active jobs list since it's stale
+
+        return jsonify({"active_jobs": jobs_list})
+
+    except Exception as e:
+        print(f"Error getting active jobs: {e}")
+        return jsonify({"active_jobs": [], "error": str(e)})
+
+
+# ========== USER HISTORY ROUTE ==========
+
+@app.route('/my-history')
+@login_required
+def my_history():
+    """User history page - view past analyses and activity."""
+    print(f"📊 /my-history accessed by user: {session.get('user', {}).get('username', 'unknown')}")
+    print(f"   Session user_id: {session.get('user_id')}")
+    print(f"   Is guest: {session.get('is_guest', False)}")
+
+    user_id = session.get('user_id')
+    is_guest = session.get('is_guest', False)
+
+    # Guests don't have database history
+    if is_guest:
+        print(f"📊 Showing empty history for guest user")
+        return render_template('history.html',
+                             analyses=[],
+                             activity_logs=[],
+                             is_guest=True,
+                             user=session.get('user'))
+
+    # Authenticated user but no database ID (database was unavailable during login)
+    if not user_id:
+        print(f"📊 Authenticated user but no database ID - database may be unavailable")
+        return render_template('history.html',
+                             analyses=[],
+                             activity_logs=[],
+                             is_guest=False,
+                             user=session.get('user'),
+                             database_unavailable=True)
+
+    try:
+        print(f"📊 Fetching analyses for user_id: {user_id}")
+        # Get user's analyses
+        analyses = Analysis.get_user_analyses(user_id, limit=100)
+        print(f"   Found {len(analyses) if analyses else 0} analyses")
+
+        print(f"📊 Fetching activity logs for user_id: {user_id}")
+        # Get user's activity logs
+        activity_logs = ActivityLog.get_user_activity(user_id, limit=200)
+        print(f"   Found {len(activity_logs) if activity_logs else 0} activity logs")
+
+        return render_template('history.html',
+                             analyses=analyses,
+                             activity_logs=activity_logs,
+                             is_guest=False,
+                             user=session.get('user'))
+
+    except Exception as e:
+        print(f"❌ Error in /my-history route: {str(e)}")
+        print(f"   Exception type: {type(e).__name__}")
+        import traceback
+        print(f"   Traceback: {traceback.format_exc()}")
+
+        # Instead of redirecting, show error page with details
+        flash(f'שגיאה בטעינת ההיסטוריה: {str(e)}', 'error')
+
+        # Try to render history page with empty data instead of redirecting
+        return render_template('history.html',
+                             analyses=[],
+                             activity_logs=[],
+                             is_guest=False,
+                             user=session.get('user'),
+                             error=str(e))
 
 
 # ========== ADMIN PANEL ROUTES ==========
@@ -693,6 +919,10 @@ def admin_delete_user():
 
 
 if __name__ == '__main__':
+    # Restore any active jobs from database on startup
+    print("🔄 Checking for active jobs to restore...")
+    restore_jobs_from_database()
+
     # Disable reloader to prevent Flask from restarting when agent creates/edits files
     # Keep debug=True for error messages, but use_reloader=False to prevent auto-restart
     app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

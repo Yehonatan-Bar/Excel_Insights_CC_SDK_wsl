@@ -229,13 +229,14 @@ class ExcelAnalysisAgent:
         # Skip events we don't recognize
         return None
 
-    async def analyze_file(self, file_path: str, event_callback=None, refinement_prompt=None, original_run_id=None) -> dict:
+    async def analyze_file(self, file_path: str, event_callback=None, additional_instructions=None, refinement_prompt=None, original_run_id=None) -> dict:
         """
         Analyze Excel file using Claude Agent SDK.
 
         Args:
             file_path: Path to uploaded Excel file
             event_callback: Optional callback function to receive real-time events
+            additional_instructions: Optional user instructions for initial analysis
             refinement_prompt: Optional user feedback/refinement request
             original_run_id: Optional ID of original analysis (for refinement context)
 
@@ -359,14 +360,27 @@ The user has reviewed your previous analysis and provided feedback above. Your j
 Begin your refinement now!"""
         else:
             # Initial analysis mode
-            user_prompt = f"""DEEP ANALYSIS REQUEST:
+            # Build base prompt
+            base_prompt = f"""DEEP ANALYSIS REQUEST:
 
 📁 Excel File: {file_path}
 📂 Output Directory: {run_dir}
 🎯 Final Dashboard: {run_dir}/dashboard.html
 
 🚀 YOUR TASK:
-Analyze this Excel file comprehensively and create a stunning interactive HTML dashboard.
+Analyze this Excel file comprehensively and create a stunning interactive HTML dashboard."""
+
+            # Add user's custom instructions if provided
+            if additional_instructions:
+                base_prompt += f"""
+
+📝 USER'S SPECIFIC INSTRUCTIONS:
+{additional_instructions}
+
+Make sure to incorporate these specific instructions into your analysis!"""
+
+            # Complete the prompt with requirements
+            user_prompt = base_prompt + """
 
 ✅ REQUIREMENTS:
 1. Create ONE self-contained `dashboard.html` file in the output directory
@@ -526,12 +540,13 @@ Begin your analysis now!"""
 
 # Synchronous wrapper for Flask
 def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callback=None,
-                       refinement_prompt=None, original_run_id=None) -> dict:
+                       additional_instructions=None, refinement_prompt=None, original_run_id=None) -> dict:
     """Synchronous wrapper for Flask route."""
     agent = ExcelAnalysisAgent(output_dir)
     return asyncio.run(agent.analyze_file(
         file_path,
         event_callback=event_callback,
+        additional_instructions=additional_instructions,
         refinement_prompt=refinement_prompt,
         original_run_id=original_run_id
     ))

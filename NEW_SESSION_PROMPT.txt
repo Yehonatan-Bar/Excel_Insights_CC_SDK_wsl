@@ -1,0 +1,58 @@
+Hi! I need you to test the new email notification and user management features that were just added to this Excel Insights Dashboard application.
+
+PROJECT CONTEXT:
+- Flask app with Claude Agent SDK for Excel analysis
+- PostgreSQL database with user authentication
+- RTL Hebrew UI with guest mode support
+- Recently added: Email notifications via SendGrid, XML user config, admin panel enhancements
+
+YOUR TASKS:
+
+1. READ THE TESTING INSTRUCTIONS
+   - Open and read: TESTING_INSTRUCTIONS.md
+   - This contains all 10 test tasks with detailed steps
+
+2. USE PLAYWRIGHT MCP FOR UI TESTING
+   - Playwright MCP server is installed and configured globally
+   - Use it to automate browser testing, take screenshots, and verify UI behavior
+   - Test scenarios are described in the instructions document
+
+3. TEST THESE KEY FEATURES:
+   ✅ Database schema has email fields (email, email_notifications)
+   ✅ users.xml loads successfully with XML parsing
+   ✅ Admin panel shows email column and can add/edit user emails
+   ✅ Email notification checkbox appears for logged-in users (NOT for guests)
+   ✅ Email service module is properly integrated
+   ✅ Upload flow captures email preference correctly
+   ✅ Email templates are formatted in RTL Hebrew
+
+4. TESTING APPROACH:
+   - Follow tasks 1-10 in TESTING_INSTRUCTIONS.md
+   - Use Playwright MCP for automated UI testing where possible
+   - Take screenshots to document UI changes
+   - Verify both happy paths and edge cases
+   - Test guest mode vs logged-in user behavior
+
+5. IMPORTANT NOTES:
+   - DO NOT try to send actual emails (no SendGrid API key configured yet)
+   - DO verify code paths reach email sending logic
+   - DO test graceful fallback when API key missing
+   - DO check RTL Hebrew layout and styling
+
+6. DELIVERABLES:
+   - Test results summary (Pass/Fail for each task)
+   - Screenshots from Playwright automation
+   - Any issues or bugs found
+   - Recommendations for improvements
+
+RECENT CHANGES (for context):
+- Last session completed Part 1 and Part 2 of email notification feature
+- Migrated from users.yaml to users.xml configuration
+- Added email_service.py with SendGrid integration
+- Modified: app.py, database.py, auth.py, templates/admin.html, templates/index.html
+- All changes committed and pushed to repository
+
+START HERE:
+Read TESTING_INSTRUCTIONS.md and begin with Task 1 (Verify Database Schema).
+
+Let me know if you need any clarification before starting!

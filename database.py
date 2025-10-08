@@ -156,6 +156,72 @@ class Analysis:
             )
             return cursor.fetchall()
 
+    @staticmethod
+    def update_job_state(run_id, job_state):
+        """Update the job state for persistence across sessions."""
+        with db.get_connection() as conn:
+            cursor = db.get_cursor(conn)
+            cursor.execute(
+                """
+                UPDATE analyses
+                SET job_state = %s,
+                    status = %s
+                WHERE run_id = %s
+                RETURNING id
+                """,
+                (json.dumps(job_state), job_state.get('status', 'unknown'), run_id)
+            )
+            return cursor.fetchone()
+
+    @staticmethod
+    def get_active_jobs(user_id=None):
+        """Get all active (running/starting) jobs, optionally filtered by user."""
+        with db.get_connection() as conn:
+            cursor = db.get_cursor(conn)
+            if user_id:
+                cursor.execute(
+                    """
+                    SELECT id, user_id, filename, run_id, status, created_at
+                    FROM analyses
+                    WHERE user_id = %s AND status IN ('starting', 'running', 'pending')
+                    ORDER BY created_at DESC
+                    """,
+                    (user_id,)
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT id, user_id, filename, run_id, status, created_at
+                    FROM analyses
+                    WHERE status IN ('starting', 'running', 'pending')
+                    ORDER BY created_at DESC
+                    """
+                )
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_job_state(run_id):
+        """Get the complete job state for a specific run_id."""
+        with db.get_connection() as conn:
+            cursor = db.get_cursor(conn)
+            cursor.execute(
+                """
+                SELECT job_state, status, filename
+                FROM analyses
+                WHERE run_id = %s
+                """,
+                (run_id,)
+            )
+            result = cursor.fetchone()
+            if result and result.get('job_state'):
+                # Parse JSONB back to dict
+                return {
+                    'job_state': result['job_state'],
+                    'status': result['status'],
+                    'filename': result['filename']
+                }
+            return None
+
 
 class Conversation:
     """Conversation and message tracking."""
@@ -273,7 +339,7 @@ class ActivityLog:
             cursor = db.get_cursor(conn)
             cursor.execute(
                 """
-                SELECT id, event_type, event_data, created_at,
+                SELECT al.id, al.event_type, al.event_data, al.created_at,
                        a.filename, a.run_id
                 FROM activity_logs al
                 LEFT JOIN analyses a ON al.analysis_id = a.id

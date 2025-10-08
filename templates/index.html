@@ -228,6 +228,62 @@
             display: block;
         }
 
+        /* Live indicator styles */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8em;
+            margin-right: auto;
+        }
+
+        .live-indicator-admin {
+            color: #858585;
+        }
+
+        .live-indicator-user {
+            color: #4ec9b0;
+            font-weight: 500;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ec9b0;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(78, 201, 176, 0.7);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(78, 201, 176, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 6px rgba(78, 201, 176, 0);
+            }
+        }
+
+        .wave-text {
+            display: inline-block;
+        }
+
+        .wave-text span {
+            display: inline-block;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+
+        .wave-text span:nth-child(1) { animation-delay: 0s; }
+        .wave-text span:nth-child(2) { animation-delay: 0.1s; }
+        .wave-text span:nth-child(3) { animation-delay: 0.2s; }
+
+        @keyframes wave {
+            0%, 100% { transform: translateY(0px); opacity: 1; }
+            50% { transform: translateY(-3px); opacity: 0.7; }
+        }
+
         .error {
             background: #fee;
             color: #c33;
@@ -387,6 +443,70 @@
             font-size: 0.9em;
             color: #1565c0;
         }
+
+        .additional-instructions-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .additional-instructions-section.visible {
+            display: block;
+        }
+
+        .additional-instructions-section h3 {
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instructions-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s;
+        }
+
+        .instructions-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .instructions-examples {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff;
+            border-right: 3px solid #667eea;
+            border-radius: 5px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .instructions-examples strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .instructions-examples ul {
+            margin: 5px 0 0 25px;
+            padding: 0;
+        }
+
+        .instructions-examples li {
+            margin: 3px 0;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -406,14 +526,17 @@
                 {% if user.role == 'admin' %}
                 <a href="{{ url_for('admin_panel') }}" class="nav-btn nav-btn-admin">🔧 פאנל ניהול</a>
                 {% endif %}
-                <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-logout">🚪 התנתק</a>
+                {% if not user.is_guest %}
+                <a href="{{ url_for('my_history') }}" class="nav-btn nav-btn-admin">📊 ההיסטוריה שלי</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-logout">🚪 התנתקות</a>
             </div>
         </div>
 
         {% if user.is_guest %}
         <div class="guest-notice">
-            <strong>👤 אתה משתמש במצב אורח</strong>
-            הניתוחים שלך יישמרו במהלך הפעלה זו בלבד. התחבר למשתמש רשום כדי לשמור את העבודה שלך לצמיתות.
+            <strong>👤 נכנסת ללא התחברות/strong>
+            הניתוחים שלך יישמרו במהלך הפעלה זו בלבד. יש להתחבר כדי לשמור את העבודה שלך לצמיתות.
             <br>
             <a href="{{ url_for('logout') }}" class="register-link">📝 התחבר או הירשם</a>
         </div>
@@ -425,12 +548,30 @@
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
-            <p><strong>גרור את קובץ האקסל שלך לכאן</strong></p>
-            <p style="color: #999; font-size: 0.9em;">או לחץ לעיון</p>
+            <p><strong>יש לגרור את קובץ האקסל שלך לכאן</strong></p>
+            <p style="color: #999; font-size: 0.9em;">או ללחוץ לעיון</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
         </div>
 
         <div class="file-name" id="fileName"></div>
+
+        <div class="additional-instructions-section" id="additionalInstructionsSection">
+            <h3>💡 הוראות נוספות לניתוח (אופציונלי)</h3>
+            <textarea
+                class="instructions-textarea"
+                id="additionalInstructions"
+                placeholder="הוספת הוראות ספציפיות לסוכן הבינה המלאכותית...&#10;&#10;לדוגמה:&#10;• התמקד בניתוח מגמות חודשיות&#10;• השווה ביצועים בין אזורים שונים&#10;• זהה חריגים והסבר אותם&#10;• צור תרשימי עוגה וקווים&#10;• נתח את שיעורי הצמיחה"
+            ></textarea>
+            <div class="instructions-examples">
+                <strong>💡 טיפים:</strong>
+                <ul>
+                    <li>לציין סוגי תרשימים ספציפיים שברצונך לראות</li>
+                    <li>להדגיש תקופות זמן או קטגוריות מסוימות</li>
+                    <li>לבקש השוואות או תובנות ספציפיות</li>
+                    <li>חשוב להיות ברור וספציפי - זה עוזר לסוכן לספק ניתוח מדויק יותר</li>
+                </ul>
+            </div>
+        </div>
 
         {% if user and not user.is_guest and user.email %}
         <div class="email-notification-section" id="emailNotificationSection">
@@ -441,12 +582,12 @@
                 </label>
             </div>
             <div class="email-info">
-                💡 תקבל התראה מייידית כשהניתוח יהיה מוכן, כולל קישור ישיר ללוח הבקרה
+                💡 תתקבל אצלך התראה מייידית כשהניתוח יהיה מוכן, כולל קישור ישיר ללוח הבקרה
             </div>
         </div>
         {% endif %}
 
-        <button class="btn" id="uploadBtn" disabled>נתח עם בינה מלאכותית</button>
+        <button class="btn" id="uploadBtn" disabled>ניתוח עם בינה מלאכותית</button>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -458,7 +599,16 @@
         <div class="activity-panel" id="activityPanel">
             <h3>
                 <span>🧠 הסוכן חושב ועובד</span>
-                <span style="font-size: 0.8em; color: #858585; margin-right: auto;">שידור חי</span>
+                {% if user and user.role == 'admin' %}
+                <span class="live-indicator live-indicator-admin">שידור חי</span>
+                {% else %}
+                <span class="live-indicator live-indicator-user">
+                    <span class="pulse-dot"></span>
+                    <span class="wave-text">
+                        <span>פ</span><span>ע</span><span>י</span><span>ל</span>
+                    </span>
+                </span>
+                {% endif %}
             </h3>
             <div class="activity-log" id="activityLog">
                 <!-- אירועים יוזרמו לכאן בזמן אמת -->
@@ -495,6 +645,7 @@
         const loading = document.getElementById('loading');
         const errorDiv = document.getElementById('error');
         const emailNotificationSection = document.getElementById('emailNotificationSection');
+        const additionalInstructionsSection = document.getElementById('additionalInstructionsSection');
 
         let selectedFile = null;
 
@@ -507,6 +658,10 @@
             if (selectedFile) {
                 fileName.textContent = `נבחר: ${selectedFile.name}`;
                 uploadBtn.disabled = false;
+                // Show additional instructions section
+                if (additionalInstructionsSection) {
+                    additionalInstructionsSection.classList.add('visible');
+                }
                 // Show email notification section if it exists
                 if (emailNotificationSection) {
                     emailNotificationSection.classList.add('visible');
@@ -531,6 +686,10 @@
             if (selectedFile) {
                 fileName.textContent = `נבחר: ${selectedFile.name}`;
                 uploadBtn.disabled = false;
+                // Show additional instructions section
+                if (additionalInstructionsSection) {
+                    additionalInstructionsSection.classList.add('visible');
+                }
                 // Show email notification section if it exists
                 if (emailNotificationSection) {
                     emailNotificationSection.classList.add('visible');
@@ -653,6 +812,12 @@
             const formData = new FormData();
             formData.append('file', selectedFile);
 
+            // Add additional instructions if provided
+            const additionalInstructions = document.getElementById('additionalInstructions');
+            if (additionalInstructions && additionalInstructions.value.trim()) {
+                formData.append('additional_instructions', additionalInstructions.value.trim());
+            }
+
             // Add email notification preference if checkbox exists
             const emailCheckbox = document.getElementById('emailNotificationCheckbox');
             if (emailCheckbox) {
@@ -694,6 +859,49 @@
                 loading.style.display = 'none';
             }
         });
+
+        // Check for active jobs on page load (session restoration)
+        async function checkForActiveJobs() {
+            try {
+                const response = await fetch('/api/active-jobs');
+                const data = await response.json();
+
+                if (data.active_jobs && data.active_jobs.length > 0) {
+                    // User has active jobs - restore the first one
+                    const activeJob = data.active_jobs[0];
+                    console.log('🔄 Restoring active job:', activeJob);
+
+                    // Show loading state
+                    loading.style.display = 'block';
+                    uploadBtn.disabled = true;
+
+                    // Set filename display
+                    fileName.textContent = `מנתח: ${activeJob.filename}`;
+
+                    // Update progress message
+                    const progressMessage = document.getElementById('progressMessage');
+                    progressMessage.textContent = activeJob.message || 'ממשיך ניתוח...';
+
+                    // Show info notification
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.cssText = 'background: #e3f2fd; color: #1565c0; padding: 15px; border-radius: 10px; margin: 15px 0; text-align: center; font-weight: 500;';
+                    infoDiv.innerHTML = `
+                        🔄 המשך ניתוח פעיל: ${activeJob.filename}
+                        <br><small style="color: #1976d2;">הניתוח שלך ממשיך מהמקום בו הפסקת</small>
+                    `;
+                    loading.insertAdjacentElement('afterend', infoDiv);
+
+                    // Start polling for this job
+                    pollStatus(activeJob.run_id, Date.now());
+                }
+            } catch (error) {
+                console.error('Error checking for active jobs:', error);
+                // Silent fail - user can still upload new files
+            }
+        }
+
+        // Check on page load
+        window.addEventListener('DOMContentLoaded', checkForActiveJobs);
     </script>
 </body>
 </html>

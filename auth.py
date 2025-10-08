@@ -287,7 +287,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            flash('אנא התחבר או המשך כאורח', 'warning')
+            flash('יש לבצע התחברות או להמשיך במצב אורח/ת', 'warning')
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
@@ -298,11 +298,11 @@ def registered_user_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            flash('אנא התחבר כדי לגשת לדף זה', 'warning')
+            flash('יש לבצע התחברות כדי לגשת לדף זה', 'warning')
             return redirect(url_for('login', next=request.url))
 
         if is_guest_user():
-            flash('תכונה זו זמינה רק למשתמשים רשומים. אנא התחבר או הירשם.', 'warning')
+            flash('תכונה זו זמינה רק לאחר ביצוע התחברות', 'warning')
             return redirect(url_for('login', next=request.url))
 
         return f(*args, **kwargs)
@@ -314,15 +314,15 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            flash('אנא התחבר כדי לגשת לדף זה', 'warning')
+            flash('יש לבצע התחברות כדי לגשת לדף זה', 'warning')
             return redirect(url_for('login', next=request.url))
 
         if is_guest_user():
-            flash('תכונה זו זמינה רק למשתמשים רשומים.', 'error')
+            flash('תכונה זו זמינה רק לאחר ביצוע התחברות', 'error')
             return redirect(url_for('index'))
 
         if session['user'].get('role') != 'admin':
-            flash('נדרשות הרשאות מנהל לגשת לדף זה', 'error')
+            flash('נדרשות הרשאות ניהול כדי לגשת לדף זה', 'error')
             return redirect(url_for('index'))
 
         return f(*args, **kwargs)
