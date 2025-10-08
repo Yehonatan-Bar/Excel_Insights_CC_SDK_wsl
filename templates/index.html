@@ -284,6 +284,78 @@
             50% { transform: translateY(-3px); opacity: 0.7; }
         }
 
+        /* Simplified working indicator for non-admin users */
+        .simple-indicator {
+            display: none;
+            margin-top: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .simple-indicator.active {
+            display: block;
+        }
+
+        .indicator-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .indicator-title {
+            color: white;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .indicator-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1em;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #4ec9b0, #9cdcfe, #4ec9b0);
+            height: 100%;
+            width: 100%;
+            animation: shimmer 2s linear infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .rotating-messages {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.95em;
+            min-height: 24px;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
         .error {
             background: #fee;
             color: #c33;
@@ -485,6 +557,7 @@
         .instructions-examples {
             margin-top: 10px;
             padding: 10px;
+            padding-right: 25px;
             background: #fff;
             border-right: 3px solid #667eea;
             border-radius: 5px;
@@ -535,16 +608,16 @@
 
         {% if user.is_guest %}
         <div class="guest-notice">
-            <strong>👤 נכנסת ללא התחברות/strong>
-            הניתוחים שלך יישמרו במהלך הפעלה זו בלבד. יש להתחבר כדי לשמור את העבודה שלך לצמיתות.
+            <strong>👤 נכנסת ללא התחברות</strong>
+            הניתוחים שלך יישמרו במהלך הפעלה זו בלבד. יש להתחבר כדי לשמור את העבודה שלך.
             <br>
-            <a href="{{ url_for('logout') }}" class="register-link">📝 התחבר או הירשם</a>
+            <a href="{{ url_for('logout') }}" class="register-link">📝 התחברות או רישום</a>
         </div>
         {% endif %}
         {% endif %}
 
         <h1>📊 לוח בקרה לתובנות אקסל</h1>
-        <p class="subtitle">ניתוח מופעל בינה מלאכותית עם Claude Agent SDK</p>
+        <p class="subtitle">ניתוח ותובנות על מסמכי אקסל עם בינה מלאכותית</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
@@ -596,24 +669,34 @@
             <p class="time-estimate" id="elapsedTime">זמן שחלף: 0 שניות</p>
         </div>
 
+        {% if user and user.role == 'admin' %}
+        <!-- Full activity panel with detailed logs - Admin only -->
         <div class="activity-panel" id="activityPanel">
             <h3>
                 <span>🧠 הסוכן חושב ועובד</span>
-                {% if user and user.role == 'admin' %}
                 <span class="live-indicator live-indicator-admin">שידור חי</span>
-                {% else %}
-                <span class="live-indicator live-indicator-user">
-                    <span class="pulse-dot"></span>
-                    <span class="wave-text">
-                        <span>פ</span><span>ע</span><span>י</span><span>ל</span>
-                    </span>
-                </span>
-                {% endif %}
             </h3>
             <div class="activity-log" id="activityLog">
                 <!-- אירועים יוזרמו לכאן בזמן אמת -->
             </div>
         </div>
+        {% else %}
+        <!-- Simplified indicator - Regular users -->
+        <div class="simple-indicator" id="simpleIndicator">
+            <div class="indicator-icon">🤖</div>
+            <div class="indicator-title">
+                <span class="pulse-dot"></span>
+                <span>הסוכן עובד על הניתוח שלך</span>
+            </div>
+            <div class="indicator-subtitle">הבינה המלאכותית מנתחת את הנתונים ויוצרת תצוגות חזותיות</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="rotating-messages" id="rotatingMessages">
+                מעבד נתונים...
+            </div>
+        </div>
+        {% endif %}
 
         <div class="error" id="error"></div>
 
@@ -747,11 +830,41 @@
 
         // Poll for analysis status
         let lastEventCount = 0;
+        let messageRotationInterval = null;
+
+        // Rotating messages for non-admin users
+        const rotatingMessagesArray = [
+            'מנתח מבנה נתונים...',
+            'מזהה דפוסים ומגמות...',
+            'יוצר תצוגות חזותיות...',
+            'מחשב סטטיסטיקות...',
+            'בונה דאשבורד אינטראקטיבי...',
+            'מייצר תובנות...'
+        ];
+
+        function startMessageRotation() {
+            const rotatingMessages = document.getElementById('rotatingMessages');
+            if (!rotatingMessages) return;
+
+            let currentIndex = 0;
+            messageRotationInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % rotatingMessagesArray.length;
+                rotatingMessages.textContent = rotatingMessagesArray[currentIndex];
+            }, 3000); // Change message every 3 seconds
+        }
+
+        function stopMessageRotation() {
+            if (messageRotationInterval) {
+                clearInterval(messageRotationInterval);
+                messageRotationInterval = null;
+            }
+        }
 
         async function pollStatus(runId, startTime) {
             const progressMessage = document.getElementById('progressMessage');
             const elapsedTime = document.getElementById('elapsedTime');
             const activityPanel = document.getElementById('activityPanel');
+            const simpleIndicator = document.getElementById('simpleIndicator');
 
             const interval = setInterval(async () => {
                 try {
@@ -765,35 +878,34 @@
                     // Update message
                     progressMessage.textContent = status.message || 'מעבד...';
 
-                    // Show activity panel and append new events
-                    console.log('DEBUG: Status response:', status);
-                    console.log('DEBUG: Events:', status.events);
-                    console.log('DEBUG: Event count:', status.event_count);
-                    console.log('DEBUG: Last event count:', lastEventCount);
+                    // Show appropriate indicator based on user role
+                    if (activityPanel) {
+                        // Admin user - show detailed activity panel
+                        if (status.events && status.events.length > 0) {
+                            activityPanel.style.display = 'block';
 
-                    if (status.events && status.events.length > 0) {
-                        activityPanel.style.display = 'block';
-
-                        // Append only new events (events beyond lastEventCount)
-                        const currentEventCount = status.event_count || 0;
-                        if (currentEventCount > lastEventCount) {
-                            // Get new events by looking at the difference
-                            const eventsToShow = status.events.slice(-(currentEventCount - lastEventCount));
-                            console.log('DEBUG: Events to show:', eventsToShow);
-                            eventsToShow.forEach(event => {
-                                appendLogEntry(event);
-                            });
-                            lastEventCount = currentEventCount;
+                            // Append only new events (events beyond lastEventCount)
+                            const currentEventCount = status.event_count || 0;
+                            if (currentEventCount > lastEventCount) {
+                                const eventsToShow = status.events.slice(-(currentEventCount - lastEventCount));
+                                eventsToShow.forEach(event => {
+                                    appendLogEntry(event);
+                                });
+                                lastEventCount = currentEventCount;
+                            }
                         }
-                    } else {
-                        console.log('DEBUG: No events available yet');
+                    } else if (simpleIndicator) {
+                        // Regular user - show simple indicator
+                        simpleIndicator.classList.add('active');
                     }
 
                     if (status.ready && status.dashboard_url) {
                         clearInterval(interval);
+                        stopMessageRotation();
                         window.location.href = status.dashboard_url;
                     } else if (status.status === 'error') {
                         clearInterval(interval);
+                        stopMessageRotation();
                         errorDiv.textContent = status.error || 'הניתוח נכשל';
                         errorDiv.style.display = 'block';
                         loading.style.display = 'none';
@@ -831,9 +943,16 @@
             // Reset event tracking
             lastEventCount = 0;
             const activityLog = document.getElementById('activityLog');
-            activityLog.innerHTML = ''; // Clear previous events
+            if (activityLog) {
+                activityLog.innerHTML = ''; // Clear previous events
+            }
             const activityPanel = document.getElementById('activityPanel');
-            activityPanel.style.display = 'none';
+            if (activityPanel) {
+                activityPanel.style.display = 'none';
+            }
+
+            // Start message rotation for non-admin users
+            startMessageRotation();
 
             try {
                 const response = await fetch('/upload', {

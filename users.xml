@@ -16,4 +16,12 @@
         <role>user</role>
         <email_notifications>true</email_notifications>
     </user>
+    <user>
+        <username>יוני</username>
+        <full_name>יוני בר</full_name>
+        <password_hash>$2b$12$FSESkDMjbQwJRuPdq0U9weAUYahQiRgCLek8IMjQcObRenye9JkEO</password_hash>
+        <role>user</role>
+        <email_notifications>true</email_notifications>
+        <email>yoni.bar@milgam.co.il</email>
+    </user>
 </users>

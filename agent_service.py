@@ -229,7 +229,8 @@ class ExcelAnalysisAgent:
         # Skip events we don't recognize
         return None
 
-    async def analyze_file(self, file_path: str, event_callback=None, additional_instructions=None, refinement_prompt=None, original_run_id=None) -> dict:
+    async def analyze_file(self, file_path: str, event_callback=None, additional_instructions=None,
+                          refinement_prompt=None, original_run_id=None, language="hebrew") -> dict:
         """
         Analyze Excel file using Claude Agent SDK.
 
@@ -239,16 +240,57 @@ class ExcelAnalysisAgent:
             additional_instructions: Optional user instructions for initial analysis
             refinement_prompt: Optional user feedback/refinement request
             original_run_id: Optional ID of original analysis (for refinement context)
+            language: Output language (default: "hebrew"). Only changes if user explicitly requests
 
         Returns:
             dict with dashboard_path, insights, and execution log
         """
+        # Check if user explicitly requested a different language
+        language_override = False
+        if additional_instructions:
+            lower_instructions = additional_instructions.lower()
+            if "english" in lower_instructions or "in english" in lower_instructions:
+                language = "english"
+                language_override = True
+            elif "arabic" in lower_instructions or "בערבית" in lower_instructions:
+                language = "arabic"
+                language_override = True
+            # Hebrew remains default unless explicitly changed
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = self.output_dir / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
 
         # System prompt for the agent - COMPREHENSIVE ANALYSIS MODE
-        system_prompt = """You are a world-class data scientist and analyst with unlimited time and resources.
+        # Adjust language requirements based on user preference
+        if language_override and language == "english":
+            language_instruction = """
+🌐 LANGUAGE REQUIREMENT:
+The user has explicitly requested ENGLISH output. Use English for all dashboard content."""
+            html_dir = 'ltr'
+            html_lang = 'en'
+        elif language_override and language == "arabic":
+            language_instruction = """
+🌐 LANGUAGE REQUIREMENT - ARABIC:
+The user has explicitly requested ARABIC output. Use Arabic for all dashboard content.
+- Use RTL (Right-to-Left) direction for Arabic text in HTML"""
+            html_dir = 'rtl'
+            html_lang = 'ar'
+        else:  # Default to Hebrew
+            language_instruction = """
+🌐 CRITICAL DEFAULT LANGUAGE - HEBREW (עברית):
+⚠️ ALWAYS use HEBREW for ALL outputs - THIS IS THE DEFAULT!
+- ALL dashboard text, titles, labels MUST be in Hebrew
+- ALL insights and analysis MUST be in Hebrew
+- ALL chart titles, axis labels, legends MUST be in Hebrew
+- ALL HTML content MUST be in Hebrew
+- Use RTL (Right-to-Left) direction
+- IGNORE input file language - OUTPUT HEBREW
+- This is the DEFAULT - do not use English unless explicitly requested!"""
+            html_dir = 'rtl'
+            html_lang = 'he'
+
+        system_prompt = f"""You are a world-class data scientist and analyst with unlimited time and resources.
+{language_instruction}
 
 🎯 YOUR MISSION: Perform DEEP, EXHAUSTIVE analysis of the Excel file and create a stunning interactive dashboard.
 
@@ -260,17 +302,21 @@ class ExcelAnalysisAgent:
 - Use ANY approach that produces the best results
 - Combine methods as needed
 
-📋 DELIVERABLES (REQUIRED):
+📋 DELIVERABLES (REQUIRED) - ALL IN HEBREW:
 1. **Single Self-Contained HTML Dashboard** saved as `dashboard.html` with:
+   - 🇮🇱 HEBREW LANGUAGE for ALL text content
+   - Add <html dir="rtl" lang="he"> for proper Hebrew display
    - 5-10+ interactive Plotly visualizations EMBEDDED INLINE (NOT as separate iframe files)
    - Use Plotly's to_html(include_plotlyjs='cdn', full_html=False, div_id='unique_id')
+   - Chart titles in Hebrew (e.g., "התפלגות מכירות" not "Sales Distribution")
+   - Axis labels in Hebrew (e.g., "חודש", "סכום", "כמות")
    - Embed each chart in a <div> element directly in the HTML
    - DO NOT create separate .html files for each visualization
    - DO NOT use iframes - embed all charts inline in ONE file
-   - Statistical insights and key findings
-   - Professional styling and layout with CSS
-   - Executive summary
-   - Organized sections with tabs/navigation using JavaScript
+   - Statistical insights and key findings IN HEBREW
+   - Professional styling with Hebrew fonts (e.g., font-family: 'Segoe UI', 'Arial Hebrew', sans-serif)
+   - Executive summary IN HEBREW (e.g., "סיכום מנהלים")
+   - Organized sections with Hebrew navigation (e.g., "ניתוח נתונים", "תובנות", "המלצות")
 
 2. **Comprehensive Analysis** including:
    - Data structure and quality assessment
@@ -281,29 +327,33 @@ class ExcelAnalysisAgent:
    - Group comparisons (if categorical data)
    - Business insights and recommendations
 
-📊 SUGGESTED WORKFLOW (but you're free to improvise!):
+📊 SUGGESTED WORKFLOW (ALL OUTPUT IN HEBREW):
 
-1. **Explore the data**
+1. **Explore the data** (חקירת הנתונים)
    - Use analyze_excel tool OR write pandas code to understand structure
    - Identify column types, missing values, distributions
+   - REMEMBER: Your analysis output must be in HEBREW
 
-2. **Generate insights**
+2. **Generate insights** (יצירת תובנות)
    - Use generate_insights tool OR write statistical analysis code
    - Calculate means, medians, correlations, etc.
+   - Write all insights in HEBREW (e.g., "הממוצע של המכירות הוא...")
 
-3. **Create visualizations**
-   - Write Plotly code directly in Python (DO NOT use create_visualization tool)
-   - Create 5-10+ charts: bar, line, scatter, pie, heatmaps, box plots
+3. **Create visualizations** (יצירת תרשימים)
+   - Write Plotly code directly in Python
+   - Set all titles and labels in HEBREW: fig.update_layout(title="כותרת בעברית", xaxis_title="ציר X", yaxis_title="ציר Y")
+   - Create 5-10+ charts with Hebrew labels
    - Convert to inline HTML using: fig.to_html(include_plotlyjs='cdn', full_html=False, div_id='chart1')
    - Store the HTML strings in variables, NOT separate files
 
-4. **Build single-file dashboard**
-   - Create ONE complete HTML file with all charts embedded inline
-   - Combine all chart HTML strings into <div> sections
-   - Add professional CSS styling for layout and design
-   - Include insights, metrics, and commentary
-   - Use JavaScript for tabs/interactivity if needed
-   - CRITICAL: Everything must be in ONE dashboard.html file
+4. **Build single-file dashboard IN HEBREW** (בניית דשבורד בעברית)
+   - Create ONE complete HTML file with Hebrew content
+   - Set HTML attributes: <html dir="rtl" lang="he">
+   - Use Hebrew headings: <h1>ניתוח נתונים מקיף</h1>
+   - Combine all chart HTML strings into Hebrew-labeled sections
+   - Add CSS with Hebrew-friendly fonts
+   - Write all text, insights, and commentary in HEBREW
+   - CRITICAL: Everything must be in ONE dashboard.html file IN HEBREW
 
 ⏰ TIME: Take 3-5 minutes. Quality and depth over speed.
 🔧 APPROACH: Whatever works best! Be creative and thorough.
@@ -313,11 +363,14 @@ class ExcelAnalysisAgent:
         if refinement_prompt and original_run_id:
             # Refinement mode - reference previous work
             original_dir = self.output_dir / original_run_id
-            user_prompt = f"""ANALYSIS REFINEMENT REQUEST:
+            user_prompt = f"""ANALYSIS REFINEMENT REQUEST - HEBREW OUTPUT REQUIRED:
+
+🇮🇱 חשוב: כל הפלט חייב להיות בעברית!
+⚠️ LANGUAGE: ALL OUTPUT MUST BE IN HEBREW
 
 📁 Excel File: {file_path}
 📂 Output Directory: {run_dir}
-🎯 Final Dashboard: {run_dir}/dashboard.html
+🎯 Final Dashboard: {run_dir}/dashboard.html (בעברית!)
 📋 Previous Analysis: {original_dir}
 
 🔄 USER FEEDBACK:
@@ -341,13 +394,15 @@ The user has reviewed your previous analysis and provided feedback above. Your j
    - Add the new analysis/visualizations requested
    - Make it better based on their feedback
 
-✅ REQUIREMENTS:
-- Create ONE self-contained `dashboard.html` with 5-10+ interactive Plotly visualizations EMBEDDED INLINE
-- Use fig.to_html(include_plotlyjs='cdn', full_html=False) - NO separate files or iframes
-- Address ALL points in the user's feedback
-- Include statistical insights and key findings
-- Professional styling and clear organization
-- CRITICAL: All charts inline in ONE file
+✅ REQUIREMENTS - חובה בעברית:
+- 🇮🇱 ALL TEXT IN HEBREW - כל הטקסט בעברית!
+- Create ONE `dashboard.html` with <html dir="rtl" lang="he">
+- 5-10+ Plotly visualizations with HEBREW titles/labels
+- Use fig.update_layout(title="עברית", font=dict(family="Arial Hebrew"))
+- Address ALL user feedback IN HEBREW
+- Statistical insights IN HEBREW (תובנות בעברית)
+- Professional RTL Hebrew styling
+- CRITICAL: Everything in HEBREW regardless of input language!
 
 💡 APPROACH:
 - Use any tools or methods that work best
@@ -360,15 +415,33 @@ The user has reviewed your previous analysis and provided feedback above. Your j
 Begin your refinement now!"""
         else:
             # Initial analysis mode
-            # Build base prompt
-            base_prompt = f"""DEEP ANALYSIS REQUEST:
+            # Build base prompt with appropriate language emphasis
+            if not language_override:  # Hebrew is default
+                base_prompt = f"""DEEP ANALYSIS REQUEST - DEFAULT LANGUAGE: HEBREW:
+
+🇮🇱 ברירת מחדל: עברית!
+⚠️ DEFAULT OUTPUT LANGUAGE: HEBREW (עברית)
+- זו ברירת המחדל - תמיד עברית אלא אם המשתמש ביקש אחרת
+- Dashboard language: HEBREW
+- ALL text, labels, insights: HEBREW
+- Ignore input file language - USE HEBREW
 
 📁 Excel File: {file_path}
 📂 Output Directory: {run_dir}
 🎯 Final Dashboard: {run_dir}/dashboard.html
 
 🚀 YOUR TASK:
-Analyze this Excel file comprehensively and create a stunning interactive HTML dashboard."""
+Analyze this Excel file and create dashboard IN HEBREW (ברירת המחדל)."""
+            else:  # User explicitly requested different language
+                lang_name = language.upper()
+                base_prompt = f"""DEEP ANALYSIS REQUEST - USER REQUESTED {lang_name}:
+
+📁 Excel File: {file_path}
+📂 Output Directory: {run_dir}
+🎯 Final Dashboard: {run_dir}/dashboard.html
+
+🚀 YOUR TASK:
+Analyze this Excel file and create dashboard in {lang_name} as requested."""
 
             # Add user's custom instructions if provided
             if additional_instructions:
@@ -382,14 +455,15 @@ Make sure to incorporate these specific instructions into your analysis!"""
             # Complete the prompt with requirements
             user_prompt = base_prompt + """
 
-✅ REQUIREMENTS:
-1. Create ONE self-contained `dashboard.html` file in the output directory
-2. Include 5-10+ interactive Plotly visualizations EMBEDDED INLINE (not as separate files)
-3. Use fig.to_html(include_plotlyjs='cdn', full_html=False) to embed charts
-4. Add statistical insights and key findings
-5. Make it visually impressive with professional styling
-6. Organize into clear sections (Overview, Visualizations, Insights, Recommendations)
-7. CRITICAL: All charts must be inline in dashboard.html - do NOT create separate viz files
+✅ REQUIREMENTS - כל הדרישות בעברית:
+1. 🇮🇱 חובה: כל התוכן בעברית - כותרות, תוויות, טקסט, הכל!
+2. Create ONE self-contained `dashboard.html` file with <html dir="rtl" lang="he">
+3. Include 5-10+ Plotly visualizations with HEBREW titles and labels
+4. Use fig.update_layout(title="כותרת עברית", font=dict(family="Arial Hebrew"))
+5. Add statistical insights IN HEBREW (תובנות סטטיסטיות בעברית)
+6. Professional Hebrew styling with RTL support
+7. Hebrew sections: סקירה כללית, תרשימים, תובנות, המלצות
+8. CRITICAL: Everything in HEBREW - ignore input file language!
 
 💡 APPROACH OPTIONS:
 - Use the MCP tools (analyze_excel, create_visualization, create_dashboard, etc.)
@@ -502,22 +576,30 @@ Begin your analysis now!"""
         }
 
     async def _create_fallback_dashboard(self, run_dir: Path, data: dict) -> Path:
-        """Create a fallback dashboard if agent fails."""
+        """Create a fallback dashboard if agent fails - IN HEBREW."""
         dashboard_path = run_dir / "dashboard.html"
         html = f"""
 <!DOCTYPE html>
-<html>
+<html dir="rtl" lang="he">
 <head>
-    <title>Excel Analysis</title>
+    <meta charset="UTF-8">
+    <title>ניתוח נתוני Excel</title>
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        body {{
+            font-family: 'Segoe UI', 'Arial Hebrew', Arial, sans-serif;
+            margin: 20px;
+            direction: rtl;
+            text-align: right;
+        }}
         .container {{ max-width: 1200px; margin: 0 auto; }}
+        h1 {{ color: #333; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Excel Analysis Results</h1>
-        <pre>{json.dumps(data, indent=2)}</pre>
+        <h1>תוצאות ניתוח Excel</h1>
+        <h2>נתונים שנותחו:</h2>
+        <pre style="direction: ltr; text-align: left;">{json.dumps(data, indent=2, ensure_ascii=False)}</pre>
     </div>
 </body>
 </html>
@@ -540,13 +622,15 @@ Begin your analysis now!"""
 
 # Synchronous wrapper for Flask
 def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callback=None,
-                       additional_instructions=None, refinement_prompt=None, original_run_id=None) -> dict:
-    """Synchronous wrapper for Flask route."""
+                       additional_instructions=None, refinement_prompt=None, original_run_id=None,
+                       language="hebrew") -> dict:
+    """Synchronous wrapper for Flask route. Default language is Hebrew."""
     agent = ExcelAnalysisAgent(output_dir)
     return asyncio.run(agent.analyze_file(
         file_path,
         event_callback=event_callback,
         additional_instructions=additional_instructions,
         refinement_prompt=refinement_prompt,
-        original_run_id=original_run_id
+        original_run_id=original_run_id,
+        language=language
     ))
