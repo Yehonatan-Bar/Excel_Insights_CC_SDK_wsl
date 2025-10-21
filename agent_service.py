@@ -21,6 +21,7 @@ from excel_mcp_tools import (
     group_comparison,
     trend_analysis
 )
+from agent_monitor import AgentMonitor
 
 # Verify API key is set
 if not os.environ.get('ANTHROPIC_API_KEY'):
@@ -230,7 +231,8 @@ class ExcelAnalysisAgent:
         return None
 
     async def analyze_file(self, file_path: str, event_callback=None, additional_instructions=None,
-                          refinement_prompt=None, original_run_id=None, language="hebrew") -> dict:
+                          refinement_prompt=None, original_run_id=None, language="hebrew",
+                          metadata_path=None, is_large_file=False, monitor=None) -> dict:
         """
         Analyze Excel file using Claude Agent SDK.
 
@@ -241,10 +243,23 @@ class ExcelAnalysisAgent:
             refinement_prompt: Optional user feedback/refinement request
             original_run_id: Optional ID of original analysis (for refinement context)
             language: Output language (default: "hebrew"). Only changes if user explicitly requests
+            metadata_path: Optional path to metadata JSON for large files
+            is_large_file: Whether this is a large file requiring incremental processing
 
         Returns:
             dict with dashboard_path, insights, and execution log
         """
+        # Load metadata if provided (for large files)
+        metadata_summary = None
+        if metadata_path and is_large_file:
+            try:
+                from large_file_handler import LargeFileAnalyzer
+                analyzer = LargeFileAnalyzer(file_path)
+                analyzer.load_metadata(metadata_path)
+                metadata_summary = analyzer.generate_metadata_summary()
+            except Exception as e:
+                print(f"⚠️ Failed to load metadata: {e}")
+                metadata_summary = None
         # Check if user explicitly requested a different language
         language_override = False
         if additional_instructions:
@@ -289,8 +304,100 @@ The user has explicitly requested ARABIC output. Use Arabic for all dashboard co
             html_dir = 'rtl'
             html_lang = 'he'
 
+        # Add large file handling instructions if applicable
+        large_file_instruction = ""
+        if is_large_file and metadata_summary:
+            large_file_instruction = f"""
+📊 LARGE FILE MODE - INCREMENTAL EXPLORATION & DISCOVERY:
+⚠️ This is a LARGE Excel file requiring intelligent exploration.
+
+🔍 METADATA PROVIDED (STRUCTURE ONLY):
+{metadata_summary}
+
+⚡ YOUR EXPLORATION TOOLKIT:
+
+You have a powerful helper script: `excel_explorer.py`
+Use bash to invoke it for efficient data exploration:
+
+**Available Commands:**
+
+1. **Find potential key columns** (high uniqueness):
+   ```bash
+   python excel_explorer.py find-keys "{{file_path}}" "SheetName"
+   ```
+
+2. **Check overlap between columns** (discover relationships):
+   ```bash
+   python excel_explorer.py check-overlap "{{file_path}}" "Sheet1" "ColumnA" "Sheet2" "ColumnB"
+   ```
+
+3. **Get column statistics**:
+   ```bash
+   python excel_explorer.py column-stats "{{file_path}}" "SheetName" "ColumnName"
+   ```
+
+4. **Sample specific column values**:
+   ```bash
+   python excel_explorer.py sample-column "{{file_path}}" "SheetName" "ColumnName" -n 1000
+   ```
+
+5. **Auto-suggest joins across all sheets**:
+   ```bash
+   python excel_explorer.py suggest-joins "{{file_path}}" -n 1000
+   ```
+
+6. **Sample rows from any sheet**:
+   ```bash
+   python excel_explorer.py sample-sheet "{{file_path}}" "SheetName" -n 100 -o 500
+   ```
+
+🧠 YOUR DISCOVERY PROCESS:
+
+1. **Review the metadata** - understand the basic structure
+2. **Reason about the domain** - what business relationships SHOULD exist?
+   - Example: "CustomerID" in Orders sheet likely links to Customers sheet
+   - Example: "ProductCode" might appear in Sales, Inventory, and Products sheets
+3. **Use excel_explorer.py to TEST your hypotheses**:
+   - Find keys: Which columns are unique identifiers?
+   - Check overlaps: Do values in Column A appear in Column B?
+   - Sample data: What do the actual values look like?
+4. **Discover semantic relationships** - not just matching names!
+   - Columns with different names might be related (e.g., "ID" and "CustomerNumber")
+   - Use check-overlap to verify data-level connections
+5. **Create visualizations from samples** - use nrows parameter
+6. **Document your findings** in the dashboard
+
+🎯 CRITICAL GUIDELINES:
+- NEVER load entire sheets - always use nrows/skiprows
+- Use excel_explorer.py for initial discovery
+- Write Python code for complex analysis (but sample data first)
+- Reason about relationships semantically, not just by column names
+- Test your assumptions with actual data overlap checks
+- Create compelling visualizations from representative samples (1K-5K rows)
+
+Example workflow:
+```bash
+# Step 1: Find keys in main sheet
+python excel_explorer.py find-keys "file.xlsx" "Sales"
+
+# Step 2: Check if CustomerID links to Customers sheet
+python excel_explorer.py check-overlap "file.xlsx" "Sales" "CustomerID" "Customers" "ID"
+
+# Step 3: If overlap is high, create joined analysis
+python
+import pandas as pd
+sales = pd.read_excel("file.xlsx", sheet_name="Sales", nrows=2000)
+customers = pd.read_excel("file.xlsx", sheet_name="Customers", nrows=2000)
+merged = sales.merge(customers, left_on="CustomerID", right_on="ID")
+# ... create visualization ...
+```
+
+Remember: You're a data detective! Use the tools to DISCOVER relationships through reasoning and data exploration.
+"""
+
         system_prompt = f"""You are a world-class data scientist and analyst with unlimited time and resources.
 {language_instruction}
+{large_file_instruction}
 
 🎯 YOUR MISSION: Perform DEEP, EXHAUSTIVE analysis of the Excel file and create a stunning interactive dashboard.
 
@@ -511,6 +618,21 @@ Begin your analysis now!"""
             max_turns=100,
         )
 
+        # Use provided monitor or create new one
+        if monitor is None:
+            monitor = AgentMonitor(run_id, output_dir=str(self.output_dir))
+            monitor.set_configuration({
+                'model': options.model,
+                'permission_mode': options.permission_mode,
+                'max_turns': options.max_turns,
+                'mcp_servers': list(options.mcp_servers.keys())
+            })
+        
+        # Update prompts in monitor
+        monitor.set_prompts(system_prompt, user_prompt)
+        print(f"[DEBUG] Monitor ready - using {"existing" if monitor else "new"} instance")
+
+
         print(f"DEBUG: Agent configured:")
         print(f"  - Model: {options.model}")
         print(f"  - MCP servers: {list(options.mcp_servers.keys())}")
@@ -528,6 +650,9 @@ Begin your analysis now!"""
 
                 # Collect events
                 async for event in client.receive_response():
+                    # Record event in monitor for debugging
+                    monitor.record_event(event)
+
                     # DEBUG: Print event to see what we're getting
                     print(f"DEBUG: Received event type: {type(event)}, hasattr content: {hasattr(event, 'content')}")
                     if hasattr(event, 'content'):
@@ -567,6 +692,9 @@ Begin your analysis now!"""
         if not dashboard_path.exists():
             # If agent didn't create dashboard, create a simple one
             dashboard_path = await self._create_fallback_dashboard(run_dir, result_data)
+
+        # Finalize monitoring
+        monitor.finalize(status='completed' if dashboard_path.exists() else 'partial')
 
         return {
             "dashboard_path": str(dashboard_path),
@@ -623,7 +751,7 @@ Begin your analysis now!"""
 # Synchronous wrapper for Flask
 def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callback=None,
                        additional_instructions=None, refinement_prompt=None, original_run_id=None,
-                       language="hebrew") -> dict:
+                       language="hebrew", metadata_path=None, is_large_file=False, monitor=None) -> dict:
     """Synchronous wrapper for Flask route. Default language is Hebrew."""
     agent = ExcelAnalysisAgent(output_dir)
     return asyncio.run(agent.analyze_file(
@@ -632,5 +760,8 @@ def analyze_excel_file(file_path: str, output_dir: str = "outputs", event_callba
         additional_instructions=additional_instructions,
         refinement_prompt=refinement_prompt,
         original_run_id=original_run_id,
-        language=language
+        language=language,
+        monitor=monitor,
+        metadata_path=metadata_path,
+        is_large_file=is_large_file
     ))

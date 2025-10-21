@@ -18,6 +18,7 @@ from auth import AuthManager, login_required, admin_required, registered_user_re
 from database import db, User, Analysis, ActivityLog
 from email_service import email_service
 from chat_service import get_chat_service
+from debug_routes import register_debug_routes
 
 # Validate API key is set
 if not os.environ.get('ANTHROPIC_API_KEY'):
@@ -41,12 +42,19 @@ else:
     print(f"✅ API Key loaded: {key_preview}")
 
 from agent_service import analyze_excel_file
+from large_file_handler import LargeFileAnalyzer
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size (increased)
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size (supports large files)
 app.config['ALLOWED_EXTENSIONS'] = {'xlsx', 'xls'}
+
+# Large file handling configuration
+app.config['LARGE_FILE_THRESHOLD'] = 30 * 1024 * 1024  # 30MB - files above this use incremental processing
+app.config['CHUNK_SIZE'] = 1000  # Number of rows to process per chunk
+app.config['METADATA_DIR'] = 'metadata'  # Directory for storing file metadata
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -55,6 +63,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Ensure directories exist
 Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
 Path(app.config['OUTPUT_FOLDER']).mkdir(exist_ok=True)
+Path(app.config['METADATA_DIR']).mkdir(exist_ok=True)
 
 # Initialize authentication manager
 auth_manager = AuthManager('users.xml')
@@ -238,23 +247,100 @@ def logout():
 def run_analysis_async(run_id, filepath, output_dir, additional_instructions=None, refinement_prompt=None, original_run_id=None):
     """Run analysis in background thread."""
     try:
+        # Check if this is a large file requiring incremental processing
+        file_size = os.path.getsize(filepath)
+        is_large_file = file_size > app.config['LARGE_FILE_THRESHOLD']
+
         if refinement_prompt:
             analysis_jobs[run_id]['status'] = 'running'
             analysis_jobs[run_id]['message'] = 'Claude Agent is refining your analysis...'
         else:
             analysis_jobs[run_id]['status'] = 'running'
-            analysis_jobs[run_id]['message'] = 'Claude Agent is deeply analyzing your data...'
+            if is_large_file:
+                analysis_jobs[run_id]['message'] = f'Large file detected ({file_size / (1024*1024):.1f} MB) - Using incremental processing...'
+                analysis_jobs[run_id]['is_large_file'] = True
+            else:
+                analysis_jobs[run_id]['message'] = 'Claude Agent is deeply analyzing your data...'
+                analysis_jobs[run_id]['is_large_file'] = False
 
         # Persist initial running state
         persist_job_state(run_id)
+        # Initialize monitoring EARLY (before metadata extraction)
+        from agent_monitor import AgentMonitor
+        from pathlib import Path as MonitorPath
+        
+        # Create output directory for this run
+        run_output_dir = MonitorPath(output_dir) / run_id
+        run_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize monitor
+        monitor = AgentMonitor(run_id, output_dir=output_dir)
+        monitor.set_configuration({
+            'file_size_mb': round(file_size / (1024*1024), 2),
+            'is_large_file': is_large_file,
+            'additional_instructions': additional_instructions,
+            'refinement_prompt': refinement_prompt
+        })
+        
+        print(f"[DEBUG] Monitor initialized for run_id: {run_id}")
+        print(f"[DEBUG] Monitor object: {monitor}")
+        print(f"[DEBUG] Monitor will save to: {run_output_dir}/agent_monitor.json")
+
 
         # Define event callback to receive real-time events
         def event_callback(log_entry):
             """Receive events from agent in real-time."""
-            print(f"Flask received event: {log_entry}")
+            print(f"\n[EVENT-CALLBACK] ========== EVENT RECEIVED ==========")
+            print(f"[EVENT-CALLBACK] Flask received event: {log_entry}")
             analysis_jobs[run_id]['events'].append(log_entry)
             analysis_jobs[run_id]['event_count'] += 1
-            print(f"Total events now: {analysis_jobs[run_id]['event_count']}")
+            print(f"[EVENT-CALLBACK] Total events now: {analysis_jobs[run_id]['event_count']}")
+
+            # Also record in monitor for debugging
+            print(f"[EVENT-CALLBACK] About to record in monitor...")
+            print(f"[EVENT-CALLBACK] Monitor object available: {monitor is not None}")
+            print(f"[EVENT-CALLBACK] Monitor type: {type(monitor)}")
+
+            try:
+                # Create content block wrapper that mimics Claude SDK TextBlock
+                class TextBlockWrapper:
+                    def __init__(self, text_content):
+                        self.text = text_content  # This is what the parser looks for!
+
+                # Create a mock event for metadata extraction
+                class MetadataEvent:
+                    def __init__(self, log_entry):
+                        # Set event type (for monitor filtering)
+                        self.type = "message"  # Recognized type
+                        self.role = "assistant"
+                        # Wrap string content in a TextBlock-like object
+                        text_content = log_entry.get('content', '')
+                        self.content = [TextBlockWrapper(text_content)]  # List of blocks!
+                        self.timestamp = log_entry.get('timestamp', '')
+                        self.event_type = log_entry.get('type', 'metadata')
+                        # Store original metadata
+                        self.metadata = {
+                            'icon': log_entry.get('icon', ''),
+                            'source': 'metadata_extraction'
+                        }
+
+                print(f"[EVENT-CALLBACK] Creating MetadataEvent wrapper...")
+                mock_event = MetadataEvent(log_entry)
+                print(f"[EVENT-CALLBACK] Mock event created: {mock_event}")
+                print(f"[EVENT-CALLBACK] Mock event.content: {mock_event.content}")
+                print(f"[EVENT-CALLBACK] Mock event.content[0].text: {mock_event.content[0].text}")
+
+                print(f"[EVENT-CALLBACK] Calling monitor.record_event()...")
+                monitor.record_event(mock_event, event_type='metadata_extraction')
+                print(f"[EVENT-CALLBACK] monitor.record_event() completed successfully!")
+
+            except Exception as e:
+                import traceback
+                print(f"[EVENT-CALLBACK-ERROR] Could not record metadata event in monitor!")
+                print(f"[EVENT-CALLBACK-ERROR] Exception: {e}")
+                print(f"[EVENT-CALLBACK-ERROR] Traceback:")
+                traceback.print_exc()
+
 
             # Persist state every 5 events for efficiency
             if analysis_jobs[run_id]['event_count'] % 5 == 0:
@@ -283,13 +369,58 @@ def run_analysis_async(run_id, filepath, output_dir, additional_instructions=Non
                 'icon': '🚀'
             })
 
+        # For large files, extract metadata first
+        metadata_path = None
+        if is_large_file and not refinement_prompt:
+            try:
+                event_callback({
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'type': 'text',
+                    'content': '🔍 Phase 1: Extracting file structure and metadata...',
+                    'icon': '📊'
+                })
+
+                analyzer = LargeFileAnalyzer(
+                    filepath,
+                    metadata_dir=app.config['METADATA_DIR'],
+                    chunk_size=app.config['CHUNK_SIZE']
+                )
+
+                metadata_path = analyzer.extract_and_save_metadata(run_id, event_callback)
+
+                event_callback({
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'type': 'text',
+                    'content': f'✅ Metadata extracted and saved to {os.path.basename(metadata_path)}',
+                    'icon': '✨'
+                })
+
+                event_callback({
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'type': 'text',
+                    'content': '🤖 Phase 2: Claude analyzing data with metadata...',
+                    'icon': '🚀'
+                })
+
+            except Exception as meta_error:
+                event_callback({
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'type': 'error',
+                    'content': f'⚠️ Metadata extraction failed: {str(meta_error)} - Falling back to standard processing',
+                    'icon': '❌'
+                })
+                metadata_path = None
+
         result = analyze_excel_file(
             file_path=filepath,
             output_dir=output_dir,
             event_callback=event_callback,
             additional_instructions=additional_instructions,
             refinement_prompt=refinement_prompt,
-            original_run_id=original_run_id
+            original_run_id=original_run_id,
+            monitor=monitor,  # Pass monitor for continuation
+            metadata_path=metadata_path,  # Pass metadata for large files
+            is_large_file=is_large_file
         )
 
         analysis_jobs[run_id]['status'] = 'completed'
@@ -409,10 +540,14 @@ def upload_file():
         # Get additional instructions if provided
         additional_instructions = request.form.get('additional_instructions', '').strip()
 
+        # Detect if file is large
+        file_size = os.path.getsize(filepath)
+        is_large_file = file_size > app.config['LARGE_FILE_THRESHOLD']
+
         # Initialize job tracking
         analysis_jobs[run_id] = {
             'status': 'starting',
-            'message': 'Starting analysis...',
+            'message': f'Starting analysis... ({file_size / (1024*1024):.1f} MB file)' if is_large_file else 'Starting analysis...',
             'filename': filename,
             'user_id': user_id,
             'events': [],  # Store activity log
@@ -420,7 +555,9 @@ def upload_file():
             'send_email': send_email and user_email is not None,  # Only if user has email
             'user_email': user_email,
             'user_full_name': user_full_name,
-            'additional_instructions': additional_instructions  # Store user instructions
+            'additional_instructions': additional_instructions,  # Store user instructions
+            'is_large_file': is_large_file,
+            'file_size_mb': round(file_size / (1024 * 1024), 2)
         }
 
         # Persist initial job state
@@ -607,7 +744,9 @@ def check_status(run_id):
         "message": job.get('message', ''),
         "filename": job.get('filename', ''),
         "events": job.get('events', [])[-100:],  # Return last 100 events to avoid huge payloads
-        "event_count": job.get('event_count', 0)
+        "event_count": job.get('event_count', 0),
+        "is_large_file": job.get('is_large_file', False),
+        "file_size_mb": job.get('file_size_mb', 0)
     }
 
     if job['status'] == 'completed':
@@ -1057,6 +1196,10 @@ def admin_delete_user():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+
+# Register debug monitoring routes
+register_debug_routes(app, analysis_jobs, login_required)
 
 if __name__ == '__main__':
     # Restore any active jobs from database on startup

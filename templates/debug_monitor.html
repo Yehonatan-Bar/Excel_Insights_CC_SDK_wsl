@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Debug Monitor - {{ run_id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        header h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        header .meta {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #858585;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d4d4d4;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3e3e42;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #2d2d30;
+            border: none;
+            color: #d4d4d4;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: #3e3e42;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: #2d2d30;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .prompt-block {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4ec9b0;
+        }
+
+        .prompt-block h3 {
+            color: #4ec9b0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .prompt-content {
+            font-family: 'Consolas', 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .event-item {
+            background: #1e1e1e;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #569cd6;
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .event-number {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .event-timestamp {
+            color: #858585;
+            font-size: 12px;
+        }
+
+        .event-type {
+            background: #2d2d30;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #4ec9b0;
+        }
+
+        .content-block {
+            background: #0d1117;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #ce9178;
+        }
+
+        .block-category {
+            display: inline-block;
+            background: #ce9178;
+            color: #1e1e1e;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .block-category.thinking {
+            background: #569cd6;
+        }
+
+        .block-category.text {
+            background: #4ec9b0;
+        }
+
+        .block-category.tool_use {
+            background: #dcdcaa;
+            color: #1e1e1e;
+        }
+
+        .block-category.tool_result {
+            background: #ce9178;
+        }
+
+        .block-content {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #d4d4d4;
+        }
+
+        .tool-call-item {
+            background: #1e1e1e;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #dcdcaa;
+        }
+
+        .tool-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #dcdcaa;
+            margin-bottom: 10px;
+        }
+
+        .tool-input {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .thinking-item {
+            background: #1e1e1e;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #569cd6;
+        }
+
+        .thinking-content {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+            color: #d4d4d4;
+        }
+
+        .error-item {
+            background: #3f1f1f;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #f48771;
+        }
+
+        .error-header {
+            color: #f48771;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #569cd6;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #667eea;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+            border: 3px solid #2d2d30;
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 20px;
+            width: 2px;
+            height: calc(100% + 10px);
+            background: #3e3e42;
+        }
+
+        .timeline-item:last-child::after {
+            display: none;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #858585;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Agent Debug Monitor</h1>
+            <div class="meta">
+                <strong>Run ID:</strong> {{ run_id }} |
+                <strong>Status:</strong> {{ data.status }} |
+                <strong>Started:</strong> {{ data.start_time }}
+                {% if data.end_time %}
+                    | <strong>Ended:</strong> {{ data.end_time }}
+                    | <strong>Duration:</strong> {{ "%.2f"|format(data.duration_seconds) }}s
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Events</h3>
+                <div class="value">{{ data.statistics.total_events }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Thinking Blocks</h3>
+                <div class="value">{{ data.statistics.thinking_count }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Tool Calls</h3>
+                <div class="value">{{ data.statistics.tool_call_count }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>API Calls</h3>
+                <div class="value">{{ data.statistics.api_call_count }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Errors</h3>
+                <div class="value">{{ data.statistics.error_count }}</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">📊 Overview</button>
+            <button class="tab" onclick="showTab('prompts')">📝 Prompts</button>
+            <button class="tab" onclick="showTab('timeline')">⏱️ Timeline</button>
+            <button class="tab" onclick="showTab('thinking')">🧠 Thinking</button>
+            <button class="tab" onclick="showTab('tools')">🔧 Tool Calls</button>
+            <button class="tab" onclick="showTab('events')">📋 All Events</button>
+            <button class="tab" onclick="showTab('errors')">❌ Errors</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <h2>Configuration</h2>
+            <div class="prompt-block">
+                <pre class="prompt-content">{{ data.configuration | tojson(indent=2) }}</pre>
+            </div>
+        </div>
+
+        <!-- Prompts Tab -->
+        <div id="prompts" class="tab-content">
+            <div class="prompt-block">
+                <h3>System Prompt</h3>
+                <pre class="prompt-content">{{ data.prompts.system_prompt }}</pre>
+            </div>
+            <div class="prompt-block">
+                <h3>User Prompt</h3>
+                <pre class="prompt-content">{{ data.prompts.user_prompt }}</pre>
+            </div>
+        </div>
+
+        <!-- Timeline Tab -->
+        <div id="timeline" class="tab-content">
+            {% if data.events %}
+                {% for event in data.events %}
+                    <div class="timeline-item">
+                        <div class="event-item">
+                            <div class="event-header">
+                                <span class="event-number">#{{ event.event_number }}</span>
+                                <span class="event-type">{{ event.event_type }}</span>
+                                <span class="event-timestamp">{{ event.timestamp }}</span>
+                            </div>
+                            {% if event.has_content %}
+                                {% for block in event.content_blocks %}
+                                    <div class="content-block">
+                                        <span class="block-category {{ block.category }}">{{ block.category.upper() }}</span>
+                                        <div class="block-content">
+                                            {% if block.category == 'thinking' %}
+                                                {{ block.data.thinking_text }}
+                                            {% elif block.category == 'text' %}
+                                                {{ block.data.text_content }}
+                                            {% elif block.category == 'tool_use' %}
+                                                <strong>Tool:</strong> {{ block.data.tool_name }}<br>
+                                                <strong>Input:</strong><br>
+                                                {{ block.data.tool_input | tojson(indent=2) }}
+                                            {% elif block.category == 'tool_result' %}
+                                                <strong>Tool ID:</strong> {{ block.data.tool_use_id }}<br>
+                                                <strong>Result:</strong><br>
+                                                {{ block.data.result_text }}
+                                            {% else %}
+                                                {{ block.data | tojson(indent=2) }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div style="color: #858585; font-style: italic;">No content</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No events recorded yet</div>
+            {% endif %}
+        </div>
+
+        <!-- Thinking Tab -->
+        <div id="thinking" class="tab-content">
+            {% if data.thinking_blocks %}
+                {% for thinking in data.thinking_blocks %}
+                    <div class="thinking-item">
+                        <div class="event-header">
+                            <span class="event-number">#{{ thinking.event_number }}</span>
+                            <span class="event-timestamp">{{ thinking.timestamp }}</span>
+                        </div>
+                        <div class="thinking-content">{{ thinking.thinking_text }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No thinking blocks recorded yet</div>
+            {% endif %}
+        </div>
+
+        <!-- Tool Calls Tab -->
+        <div id="tools" class="tab-content">
+            {% if data.tool_calls %}
+                {% for tool in data.tool_calls %}
+                    <div class="tool-call-item">
+                        <div class="event-header">
+                            <span class="event-number">#{{ tool.event_number }}</span>
+                            <span class="event-timestamp">{{ tool.timestamp }}</span>
+                        </div>
+                        <div class="tool-name">🔧 {{ tool.tool_name }}</div>
+                        <div class="tool-input">{{ tool.tool_input | tojson(indent=2) }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No tool calls recorded yet</div>
+            {% endif %}
+        </div>
+
+        <!-- All Events Tab -->
+        <div id="events" class="tab-content">
+            {% if data.events %}
+                {% for event in data.events %}
+                    <div class="event-item">
+                        <div class="event-header">
+                            <span class="event-number">#{{ event.event_number }}</span>
+                            <span class="event-type">{{ event.event_type }}</span>
+                            <span class="event-timestamp">{{ event.timestamp }}</span>
+                        </div>
+                        <pre class="prompt-content">{{ event | tojson(indent=2) }}</pre>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No events recorded yet</div>
+            {% endif %}
+        </div>
+
+        <!-- Errors Tab -->
+        <div id="errors" class="tab-content">
+            {% if data.errors %}
+                {% for error in data.errors %}
+                    <div class="error-item">
+                        <div class="error-header">Error at Event #{{ error.event_number }}</div>
+                        <div style="color: #858585; margin-bottom: 8px;">{{ error.timestamp }}</div>
+                        <div>{{ error.error }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No errors recorded 🎉</div>
+            {% endif %}
+        </div>
+
+        <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // If called programmatically, find the button by tab name
+                const tabButton = document.querySelector(`button[onclick="showTab('${tabName}')"]`);
+                if (tabButton) {
+                    tabButton.classList.add('active');
+                }
+            }
+
+            // Save active tab to localStorage for persistence across refreshes
+            localStorage.setItem('debugMonitorActiveTab', tabName);
+        }
+
+        // Restore previously active tab on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedTab = localStorage.getItem('debugMonitorActiveTab');
+            if (savedTab) {
+                // Restore the saved tab
+                showTab(savedTab);
+            }
+        });
+
+        // Auto-refresh every 5 seconds if analysis is running
+        const status = "{{ data.status }}";
+        if (status !== 'completed' && status !== 'error') {
+            setTimeout(() => location.reload(), 5000);
+        }
+    </script>
+</body>
+</html>

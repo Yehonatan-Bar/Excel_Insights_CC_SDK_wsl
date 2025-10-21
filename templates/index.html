@@ -664,8 +664,12 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
+            <div id="largeFileIndicator" style="display: none; background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-right: 4px solid #ffc107;">
+                <strong>📊 קובץ גדול זוהה</strong>
+                <p style="margin-top: 5px; font-size: 0.9em;">משתמש בעיבוד מדורג - מפת המידע נוצרת תחילה...</p>
+            </div>
             <p class="progress-message" id="progressMessage">סוכן Claude מנתח את הנתונים שלך...</p>
-            <p class="time-estimate">⏰ ניתוח מעמיק בתהליך (צפוי 3-5 דקות)</p>
+            <p class="time-estimate">⏰ ניתוח מעמיק בתהליך (צפוי 3-5 דקות לקבצים קטנים, ו30-60 דקות לקבצים גדולים)</p>
             <p class="time-estimate" id="elapsedTime">זמן שחלף: 0 שניות</p>
         </div>
 
@@ -877,6 +881,15 @@
 
                     // Update message
                     progressMessage.textContent = status.message || 'מעבד...';
+
+                    // Show large file indicator if applicable
+                    const largeFileIndicator = document.getElementById('largeFileIndicator');
+                    if (largeFileIndicator && status.is_large_file) {
+                        largeFileIndicator.style.display = 'block';
+                        if (status.file_size_mb) {
+                            largeFileIndicator.querySelector('p').textContent = `משתמש בעיבוד מדורג (${status.file_size_mb} MB) - מפת המידע נוצרת תחילה...`;
+                        }
+                    }
 
                     // Show appropriate indicator based on user role
                     if (activityPanel) {
